@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            text-align: center;
+            background-color: #282c34;
+            min-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 3.5vh;
+            color: white;
+        }
+        input {
+            font-size: large;
+        }
+        p {
+            font-size: 2.9vh;
+            color: antiquewhite;
+        }
+        .button {
+            height: 40px;
+            width: 100px;
+            align-self: center;
+            outline: none;
+            cursor: pointer;
+            border-radius: 5px;
+            background-color: antiquewhite;
+            border-color: white;
+            font-family: serif
+        }
+    </style>
+
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="favicon.png">
+<title>Crypto lost chances</title>
+</head>
+<body>
+    <p>
+        How reach would you be
+        <br/> if you invested in the right cryptocurrency just in the right time?
+        <br/>Check below.
+    </p>
+        <br/>
+
+    <form action="/calculate" method="POST">
+        <label for="month">Choose the month</label>
+        <br/>
+        <input type="month" id="month" name="Month"
+            min="2018-01" value="2021-05">
+        <br/>
+        <br/>
+        <label for="amount">Enter amount</label>
+        <div id="amount" style="display: inline;">
+            <input type="number" /> €
+            <br/>
+        </div>
+        <br/>
+        <input class="button" type="submit" value="OK"/>
+    </form>
+
+</body>
+</html>
