@@ -66,7 +66,7 @@ func (appHndl appHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		appHndl.app.Logger.Warn("request failed", zap.Error(err))
-		w.Write([]byte(err.Error()))
+		w.Write([]byte(fmt.Sprintln(err)))
 
 		switch status {
 		case http.StatusNotFound:
