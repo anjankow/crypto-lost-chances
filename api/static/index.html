@@ -46,16 +46,28 @@
     </p>
         <br/>
 
-    <form action="/calculate" method="POST">
+
+    <script type="text/javascript">
+    function validateForm() {
+
+        var m = document.forms["form"]["month"].value;
+        var v = document.forms["form"]["amount"].value;
+        if (m == "" || m == null || v == "" || v == null) {
+            alert("Enter a date and amount");
+            return false;
+        }
+    }
+    </script>
+    <form onsubmit="return validateForm()" name="form" action="/calculate" method="POST">
         <label for="month">Choose the month</label>
         <br/>
         <input type="month" id="month" name="Month"
             min="2018-01" value="2021-05">
         <br/>
         <br/>
-        <label for="amount">Enter amount</label>
-        <div id="amount" style="display: inline;">
-            <input type="number" /> €
+        <label for="amount_div">Enter amount</label>
+        <div id="amount_div" style="display: inline;">
+            <input id="amount" type="number" /> €
             <br/>
         </div>
         <br/>

@@ -3,8 +3,9 @@ package server
 import (
 	"api/internal/app"
 	"errors"
-	"io/ioutil"
 	"net/http"
+
+	"go.uber.org/zap"
 )
 
 func calculate(a *app.App, w http.ResponseWriter, r *http.Request) (int, error) {
@@ -13,25 +14,12 @@ func calculate(a *app.App, w http.ResponseWriter, r *http.Request) (int, error) 
 		return http.StatusMethodNotAllowed, errors.New("incorrect method type: expected: " + method + ", received: " + r.Method)
 	}
 
-	contentType := "application/json"
-	if r.Header.Get("Content-Type") != contentType {
-		return http.StatusUnsupportedMediaType, errors.New("incorrect content-type: expected: " + contentType + ", received: " + r.Header.Get("Content-Type"))
-	}
+	a.Logger.Error(r.ParseForm().Error())
+	a.Logger.Info(r.Form.Encode())
+	month := r.PostForm.Get("month")
+	amount := r.PostForm.Get("amount")
 
-	_, err := ioutil.ReadAll(r.Body)
-	r.Body.Close()
-	if err != nil {
-		return http.StatusInternalServerError, errors.New("can't read the request body: " + err.Error())
-	}
-
-	// var frame app.Frame
-	// if err = json.Unmarshal(body, &frame); err != nil {
-	// 	return http.StatusBadRequest, errors.New("invalid body: " + err.Error())
-	// }
-
-	// if err = a.HandleFrame(frame); err != nil {
-	// 	return http.StatusInternalServerError, errors.New("handler error: " + err.Error())
-	// }
+	a.Logger.Info("calculate request", zap.String("month", month), zap.String("amount", amount))
 
 	return http.StatusOK, nil
 }
