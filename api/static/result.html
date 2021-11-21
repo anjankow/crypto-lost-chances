@@ -64,44 +64,35 @@
         window.onload = function() {
             progressBar = document.getElementById('progressbar');
             console.log(progressBar.value);
-
-            async function updateProgress() {
-                while(true) {
-                    console.log('Taking a break...');
-                    await sleep(2000);
-                    console.log('Two seconds later, showing sleep in a loop...');
-
-                    progressBar.value += 10;
+        
+            const client = new WebSocket('ws://localhost:8081/progress');
+            client.onmessage = (e) => {
+                console.log('progress update! ' + e.data)
+                const msg = String(e.data)
+                progressBar.value = e.data;
+                if (progressBar.value >= 100) {
+                    document.getElementById('result').hidden = false;
                 }
             }
-            updateProgress();
-        
-
-            // import { w3cwebsocket as W3CWebSocket } from 'websocket';
-            // const client = new W3CWebSocket('ws://localhost:8081/progress');
-            // client.onmessage = (e) => {
-            //     console.log('message! ' + e.data)
-            //     const msg = String(e.data)
-            //     let clickEvent = new Event('progressUpdate', e.data);
-            //     document.getElementById('progressbar').dispatchEvent(event);
-            // }
         }
     </script>
 <title>Crypto lost chances</title>
 </head>
 <body>
-    <progress id="progressbar" class="progress" value="50" max="100"></progress>
+    <progress id="progressbar" class="progress" value="0" max="100"></progress>
 
-    <div name="result" id="result">
+    <div name="result" id="result" hidden="true">
         <p>If you invested in</p>
         <p class="results" id="currency" name="currency">{{.Cryptocurrency}}</p>
         <p>you could have earned up to...</p>
         <p class="results" id="income" name="income">{{.Income}}€</p>
+
+        <form action="/" method="GET">
+            <input class="button" type="submit" value="Check again"/>
+        </form>
     </div>
 
-    <form action="/" method="GET">
-    <input class="button" type="submit" value="Check again"/>
-    </form>
+    
 
 
 </body>

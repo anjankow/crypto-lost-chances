@@ -3,16 +3,63 @@ package server
 import (
 	"api/internal/app"
 	"errors"
+	"fmt"
 	"html/template"
 	"net/http"
 	"strconv"
+	"time"
 
+	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
 )
 
 type Results struct {
 	Cryptocurrency string
 	Income         float32
+}
+
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+}
+
+type worker struct {
+	conn *websocket.Conn
+	app  *app.App
+}
+
+func (w worker) sendProgressUpdate() error {
+	for progressUpdate := 5; progressUpdate <= 100; progressUpdate += 20 {
+		time.Sleep(2 * time.Second)
+		if err := w.conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprint(progressUpdate))); err != nil {
+			w.app.Logger.Error("writing the progress update failed", zap.Error(err))
+			continue
+		}
+	}
+	return nil
+}
+
+func progress(a *app.App, w http.ResponseWriter, r *http.Request) (int, error) {
+	upgrader.CheckOrigin = func(r *http.Request) bool {
+		return true
+	}
+
+	ws, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		a.Logger.Warn("upgrade failed", zap.Error(err))
+		return http.StatusBadRequest, err
+	}
+
+	workerInstance := worker{
+		conn: ws,
+		app:  a,
+	}
+	if err = workerInstance.sendProgressUpdate(); err != nil {
+		return http.StatusInternalServerError, err
+	}
+
+	return http.StatusOK, nil
+
 }
 
 func calculate(a *app.App, w http.ResponseWriter, r *http.Request) (int, error) {
