@@ -2,6 +2,7 @@ package server
 
 import (
 	"api/internal/app"
+	"api/internal/config"
 	"fmt"
 	"net/http"
 
@@ -35,10 +36,10 @@ func (ser server) registerHandlers(router *mux.Router) {
 
 }
 
-func NewServer(logger *zap.Logger, a *app.App, addr string) server {
-	if addr != "" {
-		logger.Info(fmt.Sprint("listening on address: ", addr))
-	}
+func NewServer(logger *zap.Logger, a *app.App, env config.RunEnvironment) server {
+
+	addr := getAddress(env)
+	logger.Info(fmt.Sprint("listening on address: ", addr))
 
 	return server{
 		logger: logger,

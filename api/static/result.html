@@ -65,7 +65,7 @@
             progressBar = document.getElementById('progressbar');
             console.log(progressBar.value);
         
-            const client = new WebSocket('ws://localhost:8081/progress');
+            const client = new WebSocket('ws://{{.WsAddress}}/progress');
             client.onmessage = (e) => {
                 console.log('progress update! ' + e.data)
                 const msg = String(e.data)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"api/internal/app"
+	"api/internal/config"
 	"api/internal/server"
 	"log"
 	"time"
@@ -9,8 +10,6 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
-
-const address = ":8081"
 
 func main() {
 
@@ -29,8 +28,9 @@ func main() {
 		return
 	}
 
+	env := config.GetRunEnvironment()
 	// HTTP SERVER
-	ser := server.NewServer(logger, &service, address)
+	ser := server.NewServer(logger, &service, env)
 	if err != nil {
 		logger.Fatal("Server creation failed: ", zap.Error(err))
 	}

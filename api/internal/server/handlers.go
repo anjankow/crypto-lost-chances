@@ -16,6 +16,7 @@ import (
 type Results struct {
 	Cryptocurrency string
 	Income         float32
+	WsAddress      string
 }
 
 var upgrader = websocket.Upgrader{
@@ -29,11 +30,14 @@ type worker struct {
 }
 
 func (w worker) sendProgressUpdate() error {
-	for progressUpdate := 5; progressUpdate <= 100; progressUpdate += 20 {
-		time.Sleep(2 * time.Second)
+	for progressUpdate := 5; ; progressUpdate += 5 {
+		time.Sleep(100 * time.Millisecond)
 		if err := w.conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprint(progressUpdate))); err != nil {
 			w.app.Logger.Error("writing the progress update failed", zap.Error(err))
 			continue
+		}
+		if progressUpdate >= 100 {
+			break
 		}
 	}
 	return nil
@@ -92,7 +96,8 @@ func calculate(a *app.App, w http.ResponseWriter, r *http.Request) (int, error) 
 		return http.StatusInternalServerError, errors.New("can't create the template: " + err.Error())
 	}
 
-	results := Results{Cryptocurrency: "ADA", Income: float32(amount * 2)}
+	wsAddress := getIpAddress().String()
+	results := Results{Cryptocurrency: "ADA", Income: float32(amount * 2), WsAddress: wsAddress}
 	if err = tmpl.Execute(w, results); err != nil {
 		return http.StatusInternalServerError, errors.New("can't execute the template: " + err.Error())
 	}
