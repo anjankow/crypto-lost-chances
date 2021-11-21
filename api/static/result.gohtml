@@ -36,6 +36,22 @@
             border-color: white;
             font-family: serif
         }
+        .progress {
+            background-color: turquoise;
+            border-radius: 7px;
+            border:purple;
+            border-width: thick;
+        }
+        progress::-webkit-progress-bar {
+            background-color: silver;
+            border-radius: 7px;
+            border:purple;
+            border-width: thick;
+        }
+        progress::-webkit-progress-value {
+            background-color: purple;
+            border-radius: 7px;
+        }
     </style>
 
     <meta charset="utf-8" />
@@ -44,7 +60,8 @@
 <title>Crypto lost chances</title>
 </head>
 <body>
-    <progress max="100"></progress>
+    <progress class="progress" value="50" max="100"></progress>
+
     <div name="result" id="result">
         <p>If you invested in</p>
         <p class="results" id="currency" name="currency">{{.Cryptocurrency}}</p>
