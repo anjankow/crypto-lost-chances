@@ -40,7 +40,7 @@ func calculate(a *app.App, w http.ResponseWriter, r *http.Request) (int, error) 
 
 	// MAGIC //
 
-	tmpl, err := template.ParseFiles("static/result.gohtml")
+	tmpl, err := template.ParseFiles("static/result.html")
 	if err != nil {
 		return http.StatusInternalServerError, errors.New("can't create the template: " + err.Error())
 	}
