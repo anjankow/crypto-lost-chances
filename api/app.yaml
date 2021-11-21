@@ -1,1 +1,6 @@
 runtime: go116
+api_version: 1
+threadsafe: true
+
+env_variables:
+  env: production
