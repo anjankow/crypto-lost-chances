@@ -38,7 +38,7 @@ func (ser server) registerHandlers(router *mux.Router) {
 
 func NewServer(logger *zap.Logger, a *app.App, env config.RunEnvironment) server {
 
-	addr := getAddress(env)
+	addr := getListenAddr(env)
 	logger.Info(fmt.Sprint("listening on address: ", addr))
 
 	return server{

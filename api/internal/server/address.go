@@ -6,8 +6,8 @@ import (
 	"net"
 )
 
-const localAddress = ":8081"
-const defaultProdPort = ":80"
+const localListenPort = ":8081"
+const prodListenPort = ":80"
 
 func getIpAddress() net.IP {
 	conn, err := net.Dial("udp", "8.8.8.8:80")
@@ -21,10 +21,18 @@ func getIpAddress() net.IP {
 	return localAddr.IP
 }
 
-func getAddress(env config.RunEnvironment) string {
+func getExternalAddress(env config.RunEnvironment) string {
 	if env == config.Production {
-		return getIpAddress().String() + defaultProdPort
+		return getIpAddress().String() + prodListenPort
 	}
 
-	return localAddress
+	return "localhost" + localListenPort
+}
+
+func getListenAddr(env config.RunEnvironment) string {
+	if env == config.Production {
+		return prodListenPort
+	}
+
+	return localListenPort
 }
