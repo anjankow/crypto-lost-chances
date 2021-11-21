@@ -7,7 +7,7 @@ import (
 )
 
 const localListenPort = ":8081"
-const prodListenPort = ":80"
+const prodListenPort = ":8080"
 
 func getIpAddress() net.IP {
 	conn, err := net.Dial("udp", "8.8.8.8:80")
