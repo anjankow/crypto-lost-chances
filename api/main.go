@@ -2,7 +2,6 @@ package main
 
 import (
 	"api/internal/app"
-	"api/internal/config"
 	"api/internal/server"
 	"log"
 	"time"
@@ -28,9 +27,8 @@ func main() {
 		return
 	}
 
-	env := config.GetRunEnvironment()
 	// HTTP SERVER
-	ser := server.NewServer(logger, &service, env)
+	ser := server.NewServer(logger, &service)
 	if err != nil {
 		logger.Fatal("Server creation failed: ", zap.Error(err))
 	}

@@ -64,6 +64,7 @@
         window.onload = function() {
             progressBar = document.getElementById('progressbar');
             console.log(progressBar.value);
+            console.log("opening socket {{.WsAddress}}");
         
             const client = new WebSocket('ws://{{.WsAddress}}/progress');
             client.onmessage = (e) => {
