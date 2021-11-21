@@ -2,7 +2,6 @@ package server
 
 import (
 	"api/internal/app"
-	"api/internal/config"
 	"errors"
 	"fmt"
 	"html/template"
@@ -97,7 +96,7 @@ func calculate(a *app.App, w http.ResponseWriter, r *http.Request) (int, error) 
 		return http.StatusInternalServerError, errors.New("can't create the template: " + err.Error())
 	}
 
-	wsAddress := getAddress(config.GetRunEnvironment())
+	wsAddress := getIpAddress().String()
 	results := Results{Cryptocurrency: "ADA", Income: float32(amount * 2), WsAddress: wsAddress}
 	if err = tmpl.Execute(w, results); err != nil {
 		return http.StatusInternalServerError, errors.New("can't execute the template: " + err.Error())
