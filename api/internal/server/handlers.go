@@ -14,8 +14,9 @@ func calculate(a *app.App, w http.ResponseWriter, r *http.Request) (int, error) 
 		return http.StatusMethodNotAllowed, errors.New("incorrect method type: expected: " + method + ", received: " + r.Method)
 	}
 
-	a.Logger.Error(r.ParseForm().Error())
-	a.Logger.Info(r.Form.Encode())
+	if err := r.ParseForm(); err != nil {
+		a.Logger.Error(err.Error())
+	}
 	month := r.PostForm.Get("month")
 	amount := r.PostForm.Get("amount")
 

@@ -52,7 +52,7 @@
 
         var m = document.forms["form"]["month"].value;
         var v = document.forms["form"]["amount"].value;
-        if (m == "" || m == null || v == "" || v == null) {
+        if (m == "" || m == null || v == "" || v == null || v < 1) {
             alert("Enter a date and amount");
             return false;
         }
@@ -61,15 +61,13 @@
     <form onsubmit="return validateForm()" name="form" action="/calculate" method="POST">
         <label for="month">Choose the month</label>
         <br/>
-        <input type="month" id="month" name="Month"
+        <input type="month" id="month" name="month"
             min="2018-01" value="2021-05">
         <br/>
         <br/>
-        <label for="amount_div">Enter amount</label>
-        <div id="amount_div" style="display: inline;">
-            <input id="amount" type="number" /> €
-            <br/>
-        </div>
+        <label for="amount">Enter amount</label>
+        <input id="amount" type="number" name="amount"/> €
+        <br/>
         <br/>
         <input class="button" type="submit" value="OK"/>
     </form>
