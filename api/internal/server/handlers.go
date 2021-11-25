@@ -2,7 +2,6 @@ package server
 
 import (
 	"api/internal/app"
-	"api/internal/config"
 	"errors"
 	"fmt"
 	"html/template"
@@ -17,7 +16,6 @@ import (
 type Results struct {
 	Cryptocurrency string
 	Income         float32
-	WsAddress      string
 }
 
 var upgrader = websocket.Upgrader{
@@ -97,10 +95,10 @@ func calculate(a *app.App, w http.ResponseWriter, r *http.Request) (int, error) 
 		return http.StatusInternalServerError, errors.New("can't create the template: " + err.Error())
 	}
 
-	wsAddress := config.GetDomainAddr()
-	a.Logger.Debug("web socket address: " + wsAddress)
+	// wsAddress := config.GetDomainAddr()
+	// a.Logger.Debug("web socket address: " + wsAddress)
 
-	results := Results{Cryptocurrency: "ADA", Income: float32(amount * 2), WsAddress: wsAddress}
+	results := Results{Cryptocurrency: "ADA", Income: float32(amount * 2)}
 	if err = tmpl.Execute(w, results); err != nil {
 		return http.StatusInternalServerError, errors.New("can't execute the template: " + err.Error())
 	}

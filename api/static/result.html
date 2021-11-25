@@ -64,9 +64,23 @@
         window.onload = function() {
             progressBar = document.getElementById('progressbar');
             console.log(progressBar.value);
-            console.log("opening socket {{.WsAddress}}");
+            
         
-            const client = new WebSocket('ws://{{.WsAddress}}/progress');
+            var scheme = window.location.protocol == "https:" ? 'wss://' : 'ws://';
+            var webSocketUri =  scheme
+                                + window.location.hostname
+                                + (location.port ? ':'+location.port: '')
+                                + '/progress';
+            console.log("opening socket "+webSocketUri);
+            
+            var client = new WebSocket(webSocketUri);
+            client.onopen = function() {
+                console.log('web socket connected');
+            };
+            client.onclose = function() {
+                console.log('web socket closed');
+            };
+      
             client.onmessage = (e) => {
                 console.log('progress update! ' + e.data)
                 const msg = String(e.data)
