@@ -2,3 +2,4 @@ runtime: go116
 
 env_variables:
   ENV: production
+  API_URL: crypto-lost-chances.appspot.com
