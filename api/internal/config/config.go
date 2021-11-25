@@ -23,12 +23,14 @@ var (
 
 func GetRunEnvironment() RunEnvironment {
 
-	if env == "" {
-		if os.Getenv("ENV") == "prod" || os.Getenv("ENV") == "production" {
-			env = Production
-		} else {
-			env = Development
-		}
+	if env != "" {
+		return env
+	}
+
+	if os.Getenv("ENV") == "prod" || os.Getenv("ENV") == "production" {
+		env = Production
+	} else {
+		env = Development
 	}
 
 	return env
@@ -36,14 +38,17 @@ func GetRunEnvironment() RunEnvironment {
 
 // GetPort returns port prepended with `:`
 func GetPort() string {
-	if port == "" {
-		if GetRunEnvironment() == Production {
-			port = ":" + os.Getenv("PORT")
-		} else {
-			port = defaultLocalPort
-		}
+	if port != "" {
+		return port
 	}
 
+	portNum := os.Getenv("PORT")
+	if portNum != "" {
+		port = ":" + portNum
+		return port
+	}
+
+	port = defaultLocalPort
 	return port
 }
 
