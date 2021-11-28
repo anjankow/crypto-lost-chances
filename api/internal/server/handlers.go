@@ -13,16 +13,6 @@ import (
 	"go.uber.org/zap"
 )
 
-type UserInput struct {
-	MonthYear time.Time
-	Amount    int
-}
-
-type Results struct {
-	Cryptocurrency string
-	Income         float32
-}
-
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
@@ -70,10 +60,12 @@ func progress(a *app.App, w http.ResponseWriter, r *http.Request) (int, error) {
 
 }
 
-func getUserInput(a *app.App, r *http.Request) (input UserInput, err error) {
-	if err := r.ParseForm(); err != nil {
-		errors.New("can't parse the form: " + err.Error())
+func getUserInput(a *app.App, r *http.Request) (input app.UserInput, err error) {
+	if err = r.ParseForm(); err != nil {
+		err = errors.New("can't parse the form: " + err.Error())
+		return
 	}
+
 	dateStr := r.PostForm.Get("month")
 	amountStr := r.PostForm.Get("amount")
 
@@ -115,13 +107,16 @@ func handleCalculate(a *app.App, w http.ResponseWriter, r *http.Request) (int, e
 	a.Logger.Info("calculate request", zap.String("month", userInput.MonthYear.Month().String()), zap.Int("month", userInput.MonthYear.Year()), zap.Int("amount", userInput.Amount))
 
 	// MAGIC //
+	results, err := a.ProcessCalculateReq(userInput)
+	if err != nil {
+		return http.StatusInternalServerError, errors.New("can't process the request: " + err.Error())
+	}
 
 	tmpl, err := template.ParseFiles("static/result.html")
 	if err != nil {
 		return http.StatusInternalServerError, errors.New("can't create the template: " + err.Error())
 	}
 
-	results := Results{Cryptocurrency: "ADA", Income: float32(userInput.Amount * 2)}
 	if err = tmpl.Execute(w, results); err != nil {
 		return http.StatusInternalServerError, errors.New("can't execute the template: " + err.Error())
 	}
