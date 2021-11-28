@@ -3,6 +3,7 @@ package server
 import (
 	"api/internal/app"
 	"api/internal/config"
+	"api/internal/server/middleware"
 	"fmt"
 	"net/http"
 
@@ -26,7 +27,7 @@ type appHandler struct {
 type AppHandleFunc func(*app.App, http.ResponseWriter, *http.Request) (int, error)
 
 func (ser server) registerHandlers(router *mux.Router) {
-	router.PathPrefix("/calculate").Methods("POST").Handler(appHandler{app: ser.app, Handle: handleCalculate})
+	router.PathPrefix("/calculate").Methods("POST").Handler(middleware.AddRequestID(appHandler{app: ser.app, Handle: handleCalculate}))
 	router.PathPrefix("/progress").Handler(appHandler{app: ser.app, Handle: progress})
 
 	router.HandleFunc("/health", healthcheck)
@@ -64,6 +65,7 @@ func (ser server) Run() error {
 func (appHndl appHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	appHndl.app.Logger.Debug("request received", zap.String("method", r.Method), zap.String("url", r.URL.Path), zap.String("content-type", r.Header.Get("Content-Type")))
+
 	status, err := appHndl.Handle(appHndl.app, w, r)
 
 	if err != nil {

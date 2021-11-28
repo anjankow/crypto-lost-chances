@@ -2,10 +2,12 @@ package server
 
 import (
 	"api/internal/app"
+	"api/internal/server/middleware"
 	"errors"
 	"fmt"
 	"html/template"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -23,7 +25,14 @@ type worker struct {
 	app  *app.App
 }
 
-func (w worker) sendProgressUpdate() error {
+type ResultsTemplate struct {
+	Cryptocurrency string
+	Income         float32
+	RequestID      string
+}
+
+func (w worker) sendProgressUpdate(requestID string) error {
+
 	for progressUpdate := 5; ; progressUpdate += 5 {
 		time.Sleep(100 * time.Millisecond)
 		if err := w.conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprint(progressUpdate))); err != nil {
@@ -37,7 +46,8 @@ func (w worker) sendProgressUpdate() error {
 	return nil
 }
 
-func progress(a *app.App, w http.ResponseWriter, r *http.Request) (int, error) {
+func progress(a *app.App, w http.ResponseWriter, r *http.Request) (status int, err error) {
+
 	upgrader.CheckOrigin = func(r *http.Request) bool {
 		return true
 	}
@@ -52,8 +62,19 @@ func progress(a *app.App, w http.ResponseWriter, r *http.Request) (int, error) {
 		conn: ws,
 		app:  a,
 	}
-	if err = workerInstance.sendProgressUpdate(); err != nil {
-		return http.StatusInternalServerError, err
+
+	status = http.StatusInternalServerError
+
+	// get request ID
+	parsed, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		return
+	}
+	requestID := parsed["id"][0]
+	a.Logger.Debug("sending progress updates for request " + requestID)
+
+	if err = workerInstance.sendProgressUpdate(requestID); err != nil {
+		return
 	}
 
 	return http.StatusOK, nil
@@ -95,6 +116,10 @@ func getUserInput(a *app.App, r *http.Request) (input app.UserInput, err error) 
 }
 
 func handleCalculate(a *app.App, w http.ResponseWriter, r *http.Request) (int, error) {
+	ctx := r.Context()
+	requestID := middleware.GetRequestID(ctx)
+	a.Logger.Debug("handling calculate request", zap.String("id", requestID))
+
 	method := "POST"
 	if r.Method != method {
 		return http.StatusMethodNotAllowed, errors.New("incorrect method type: expected: " + method + ", received: " + r.Method)
@@ -107,7 +132,7 @@ func handleCalculate(a *app.App, w http.ResponseWriter, r *http.Request) (int, e
 	a.Logger.Info("calculate request", zap.String("month", userInput.MonthYear.Month().String()), zap.Int("month", userInput.MonthYear.Year()), zap.Int("amount", userInput.Amount))
 
 	// MAGIC //
-	results, err := a.ProcessCalculateReq(userInput)
+	results, err := a.ProcessCalculateReq(r.Context(), userInput)
 	if err != nil {
 		return http.StatusInternalServerError, errors.New("can't process the request: " + err.Error())
 	}
@@ -117,11 +142,19 @@ func handleCalculate(a *app.App, w http.ResponseWriter, r *http.Request) (int, e
 		return http.StatusInternalServerError, errors.New("can't create the template: " + err.Error())
 	}
 
-	if err = tmpl.Execute(w, results); err != nil {
+	if err = tmpl.Execute(w, makeResultTemplateValues(requestID, results)); err != nil {
 		return http.StatusInternalServerError, errors.New("can't execute the template: " + err.Error())
 	}
 
 	return http.StatusOK, nil
+}
+
+func makeResultTemplateValues(requestID string, results app.Results) ResultsTemplate {
+	return ResultsTemplate{
+		Cryptocurrency: results.Cryptocurrency,
+		Income:         results.Income,
+		RequestID:      requestID,
+	}
 }
 
 func healthcheck(w http.ResponseWriter, _ *http.Request) {
