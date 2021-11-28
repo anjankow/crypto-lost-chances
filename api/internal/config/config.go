@@ -10,15 +10,12 @@ const (
 	Development RunEnvironment = "dev"
 	Production  RunEnvironment = "prod"
 
-	defaultLocalPort  = ":8081"
-	defaultProdDomain = "crypto-lost-chances.appspot.com"
-	localDomain       = "localhost" + defaultLocalPort
+	defaultLocalPort = ":8081"
 )
 
 var (
-	env    RunEnvironment
-	port   string
-	domain string
+	env  RunEnvironment
+	port string
 )
 
 func GetRunEnvironment() RunEnvironment {
@@ -50,24 +47,4 @@ func GetPort() string {
 
 	port = defaultLocalPort
 	return port
-}
-
-func GetDomainAddr() string {
-	if domain != "" {
-		return domain
-	}
-
-	if GetRunEnvironment() != Production {
-		domain = localDomain
-		return domain
-	}
-
-	apiUrl := os.Getenv("API_URL")
-	if apiUrl == "" {
-		domain = defaultProdDomain
-	} else {
-		domain = apiUrl
-	}
-
-	return domain
 }
