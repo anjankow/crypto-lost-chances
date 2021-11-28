@@ -13,6 +13,11 @@ import (
 	"go.uber.org/zap"
 )
 
+type UserInput struct {
+	MonthYear time.Time
+	Amount    int
+}
+
 type Results struct {
 	Cryptocurrency string
 	Income         float32
@@ -65,28 +70,49 @@ func progress(a *app.App, w http.ResponseWriter, r *http.Request) (int, error) {
 
 }
 
-func calculate(a *app.App, w http.ResponseWriter, r *http.Request) (int, error) {
+func getUserInput(a *app.App, r *http.Request) (input UserInput, err error) {
+	if err := r.ParseForm(); err != nil {
+		errors.New("can't parse the form: " + err.Error())
+	}
+	dateStr := r.PostForm.Get("month")
+	amountStr := r.PostForm.Get("amount")
+
+	if dateStr == "" || amountStr == "" {
+		err = errors.New("parameters 'month' and 'amount' are required")
+		return
+	}
+	a.Logger.Info("user input", zap.String("date", dateStr), zap.String("amount", amountStr))
+
+	layout := "2006-01-02"
+	date, err := time.Parse(layout, dateStr+"-01")
+	if err != nil {
+		err = errors.New("can't parse 'month' parameter: " + err.Error())
+		return
+	}
+
+	amount, err := strconv.Atoi(amountStr)
+	if err != nil {
+		err = errors.New("can't parse amount to int: " + err.Error())
+		return
+	}
+
+	input.Amount = amount
+	input.MonthYear = date
+
+	return
+}
+
+func handleCalculate(a *app.App, w http.ResponseWriter, r *http.Request) (int, error) {
 	method := "POST"
 	if r.Method != method {
 		return http.StatusMethodNotAllowed, errors.New("incorrect method type: expected: " + method + ", received: " + r.Method)
 	}
 
-	if err := r.ParseForm(); err != nil {
-		return http.StatusBadRequest, errors.New("can't parse the form: " + err.Error())
-	}
-	monthStr := r.PostForm.Get("month")
-	amountStr := r.PostForm.Get("amount")
-
-	a.Logger.Info("calculate request", zap.String("month", monthStr), zap.String("amount", amountStr))
-
-	if monthStr == "" || amountStr == "" {
-		return http.StatusBadRequest, errors.New("parameters 'month' and 'amount' are required")
-	}
-
-	amount, err := strconv.Atoi(amountStr)
+	userInput, err := getUserInput(a, r)
 	if err != nil {
-		return http.StatusBadRequest, errors.New("can't parse amount to int: " + err.Error())
+		return http.StatusBadRequest, err
 	}
+	a.Logger.Info("calculate request", zap.String("month", userInput.MonthYear.Month().String()), zap.Int("month", userInput.MonthYear.Year()), zap.Int("amount", userInput.Amount))
 
 	// MAGIC //
 
@@ -95,10 +121,7 @@ func calculate(a *app.App, w http.ResponseWriter, r *http.Request) (int, error) 
 		return http.StatusInternalServerError, errors.New("can't create the template: " + err.Error())
 	}
 
-	// wsAddress := config.GetDomainAddr()
-	// a.Logger.Debug("web socket address: " + wsAddress)
-
-	results := Results{Cryptocurrency: "ADA", Income: float32(amount * 2)}
+	results := Results{Cryptocurrency: "ADA", Income: float32(userInput.Amount * 2)}
 	if err = tmpl.Execute(w, results); err != nil {
 		return http.StatusInternalServerError, errors.New("can't execute the template: " + err.Error())
 	}
