@@ -33,16 +33,27 @@ type ResultsTemplate struct {
 
 func (w worker) sendProgressUpdate(requestID string) error {
 
-	for progressUpdate := 5; ; progressUpdate += 5 {
-		time.Sleep(100 * time.Millisecond)
-		if err := w.conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprint(progressUpdate))); err != nil {
-			w.app.Logger.Error("writing the progress update failed", zap.Error(err))
-			continue
-		}
-		if progressUpdate >= 100 {
-			break
+	currentProgress, cancel, err := w.app.ListenProgress(requestID)
+	if err != nil {
+		return errors.New("can't listen the progress: " + err.Error())
+	}
+
+	listen := true
+	for listen {
+		select {
+		case progress := <-currentProgress:
+			w.app.Logger.Debug("progress update", zap.Int("progress", progress))
+			if err := w.conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprint(progress))); err != nil {
+				w.app.Logger.Error("writing the progress update failed", zap.Error(err))
+			}
+		case <-cancel:
+			listen = false
+			w.app.Logger.Debug("finished listening for the progress")
 		}
 	}
+
+	w.app.Logger.Debug("end of progress updates")
+
 	return nil
 }
 

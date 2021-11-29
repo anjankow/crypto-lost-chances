@@ -29,9 +29,14 @@ func NewApp(l *zap.Logger) App {
 
 func (a App) ProcessCalculateReq(ctx context.Context, input UserInput) (Results, error) {
 	results := Results{Cryptocurrency: "ADA", Income: float32(input.Amount * 2)}
+
+	// calls the main app
+
 	return results, nil
 }
 
-func (a App) getProgress() {
+func (a App) ListenProgress(requestID string) (currentProgress chan int, cancel chan bool, err error) {
+	// listens on the queue for the progress
 
+	return
 }
