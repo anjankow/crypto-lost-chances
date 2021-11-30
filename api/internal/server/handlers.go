@@ -3,6 +3,7 @@ package server
 import (
 	"api/internal/app"
 	"api/internal/server/middleware"
+	"context"
 	"errors"
 	"fmt"
 	"html/template"
@@ -31,25 +32,21 @@ type ResultsTemplate struct {
 	RequestID      string
 }
 
-func (w worker) sendProgressUpdate(requestID string) error {
+func (w worker) sendProgressUpdate(ctx context.Context, requestID string) error {
 
-	currentProgress, cancel, err := w.app.ListenProgress(requestID)
-	if err != nil {
-		return errors.New("can't listen the progress: " + err.Error())
+	callback := func(progress int) {
+		w.app.Logger.Debug("progress update", zap.Int("progress", progress))
+		if err := w.conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprint(progress))); err != nil {
+			w.app.Logger.Error("writing the progress update failed", zap.Error(err))
+		}
 	}
 
-	listen := true
-	for listen {
-		select {
-		case progress := <-currentProgress:
-			w.app.Logger.Debug("progress update", zap.Int("progress", progress))
-			if err := w.conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprint(progress))); err != nil {
-				w.app.Logger.Error("writing the progress update failed", zap.Error(err))
-			}
-		case <-cancel:
-			listen = false
-			w.app.Logger.Debug("finished listening for the progress")
-		}
+	cctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	err := w.app.ListenProgress(cctx, requestID, callback)
+	if err != nil {
+		return errors.New("listening the progress failed: " + err.Error())
 	}
 
 	w.app.Logger.Debug("end of progress updates")
@@ -84,7 +81,7 @@ func progress(a *app.App, w http.ResponseWriter, r *http.Request) (status int, e
 	requestID := parsed["id"][0]
 	a.Logger.Debug("sending progress updates for request " + requestID)
 
-	if err = workerInstance.sendProgressUpdate(requestID); err != nil {
+	if err = workerInstance.sendProgressUpdate(r.Context(), requestID); err != nil {
 		return
 	}
 

@@ -21,11 +21,12 @@ func main() {
 
 	logger.Info("Service started")
 
-	service := app.NewApp(logger)
+	service, closer, err := app.NewApp(logger)
 	if err != nil {
 		logger.Fatal("New service creation failed: ", zap.Error(err))
 		return
 	}
+	defer closer()
 
 	// HTTP SERVER
 	ser := server.NewServer(logger, &service)

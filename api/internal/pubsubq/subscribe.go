@@ -6,28 +6,31 @@ import (
 	"cloud.google.com/go/pubsub"
 )
 
-type Config struct {
-	Topic  string
-	SubID  string
-	Filter string
-}
+const (
+	subscriptionName = "progressSub"
+	topicName        = "progress-update"
+)
 
-func Subscribe(ctx context.Context, client pubsub.Client, cfg Config) error {
+func Subscribe(ctx context.Context, client *pubsub.Client) (*pubsub.Subscription, error) {
+
+	sub := client.Subscription(subscriptionName)
+	if sub != nil {
+		return sub, nil
+	}
 
 	subCfg := pubsub.SubscriptionConfig{
-		Topic:                 client.Topic(cfg.Topic),
+		Topic:                 client.Topic(topicName),
 		EnableMessageOrdering: true,
-		Filter:                cfg.Filter,
 		Detached:              false,
 	}
 
-	sub, err := client.CreateSubscription(ctx, cfg.SubID, subCfg)
+	sub, err := client.CreateSubscription(ctx, subscriptionName, subCfg)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	sub.ReceiveSettings.Synchronous = true
 	sub.ReceiveSettings.MaxOutstandingMessages = 1
 
-	return nil
+	return sub, nil
 }
