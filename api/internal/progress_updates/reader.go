@@ -4,6 +4,7 @@ import (
 	"api/internal/config"
 	"context"
 	"errors"
+	"sync"
 
 	"cloud.google.com/go/pubsub"
 	"go.uber.org/zap"
@@ -20,12 +21,14 @@ type Reader struct {
 	logger         *zap.Logger
 	sub            *pubsub.Subscription
 	progressPerReq map[string]chan int
+	wg             sync.WaitGroup
 }
 
 func NewReader(logger *zap.Logger) Reader {
 	return Reader{
 		logger:         logger,
 		progressPerReq: map[string]chan int{},
+		wg:             sync.WaitGroup{},
 	}
 }
 
@@ -45,6 +48,7 @@ func (r *Reader) Start(ctx context.Context) (closer func(), err error) {
 	closer = func() {
 		subCloser()
 		ctxCancel()
+		r.wg.Wait()
 	}
 
 	if err != nil {
@@ -54,11 +58,13 @@ func (r *Reader) Start(ctx context.Context) (closer func(), err error) {
 
 	r.sub = sub
 
+	r.wg.Add(1)
 	go func() {
 		if err := r.receiveFromPubsub(cctx); err != nil {
 			r.logger.Error("error when receiving from pubsub: " + err.Error())
 		}
 		r.logger.Info("finished receiving from pubsub")
+		r.wg.Done()
 	}()
 
 	return
