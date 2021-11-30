@@ -2,7 +2,6 @@ package progressupdates
 
 import (
 	"api/internal/config"
-	"api/internal/pubsubq"
 	"context"
 	"errors"
 
@@ -108,11 +107,13 @@ func subscribe(ctx context.Context) (sub *pubsub.Subscription, closerFunc func()
 func (r *Reader) receiveFromPubsub(ctx context.Context) error {
 
 	pubsubCallback := func(ctx context.Context, msg *pubsub.Message) {
-		progressMsg, err := pubsubq.GetProgressMessage(msg)
+		progressMsg, err := unmarshalProgressMessage(msg)
 		if err != nil {
 			r.logger.Warn("can't unmarshall the message: " + err.Error())
 			return
 		}
+
+		r.logger.Info("received", zap.String("requestID", progressMsg.RequestID), zap.Int("progress", progressMsg.Progress))
 
 		_, ok := r.progressPerReq[progressMsg.RequestID]
 		if !ok {

@@ -1,4 +1,4 @@
-package pubsubq
+package progressupdates
 
 import (
 	"encoding/json"
@@ -11,7 +11,7 @@ type ProgressMessage struct {
 	Progress  int    `json:"progress"`
 }
 
-func GetProgressMessage(msg *pubsub.Message) (ProgressMessage, error) {
+func unmarshalProgressMessage(msg *pubsub.Message) (ProgressMessage, error) {
 	var progressMessage ProgressMessage
 	err := json.Unmarshal(msg.Data, &progressMessage)
 	return progressMessage, err
