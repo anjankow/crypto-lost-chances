@@ -13,6 +13,8 @@ import (
 const (
 	subscriptionName = "progressSub"
 	topicName        = "progress-update"
+
+	maxProgress = 100
 )
 
 type Reader struct {
@@ -25,6 +27,15 @@ func NewReader(logger *zap.Logger) Reader {
 	return Reader{
 		logger: logger,
 	}
+}
+
+func (r *Reader) SubscribeToProgressUpdates(requestID string) chan int {
+	_, ok := r.progressPerReq[requestID]
+	if !ok {
+		r.progressPerReq[requestID] = make(chan int, maxProgress)
+	}
+
+	return r.progressPerReq[requestID]
 }
 
 func (r *Reader) Start(ctx context.Context) (closer func(), err error) {
@@ -91,7 +102,6 @@ func subscribe(ctx context.Context) (sub *pubsub.Subscription, closerFunc func()
 	}
 
 	sub.ReceiveSettings.Synchronous = true
-	sub.ReceiveSettings.MaxOutstandingMessages = 1
 
 	return
 }
@@ -107,9 +117,13 @@ func (r *Reader) receiveFromPubsub(ctx context.Context) error {
 
 		_, ok := r.progressPerReq[progressMsg.RequestID]
 		if !ok {
-			r.progressPerReq[progressMsg.RequestID] = make(chan int, 100)
+			r.progressPerReq[progressMsg.RequestID] = make(chan int, maxProgress)
 		}
 		r.progressPerReq[progressMsg.RequestID] <- progressMsg.Progress
+
+		if progressMsg.Progress >= maxProgress {
+			close(r.progressPerReq[progressMsg.RequestID])
+		}
 	}
 
 	// blocking call
