@@ -11,11 +11,14 @@ const (
 	Production  RunEnvironment = "prod"
 
 	defaultLocalPort = ":8081"
+
+	defaultProjectID = "crypto-lost-chances"
 )
 
 var (
-	env  RunEnvironment
-	port string
+	env       RunEnvironment
+	port      string
+	projectID string
 )
 
 func GetRunEnvironment() RunEnvironment {
@@ -47,4 +50,17 @@ func GetPort() string {
 
 	port = defaultLocalPort
 	return port
+}
+
+func GetProjectID() string {
+	if projectID != "" {
+		return projectID
+	}
+
+	projectID = os.Getenv("PROJECT_ID")
+	if projectID == "" {
+		projectID = defaultProjectID
+	}
+
+	return projectID
 }
