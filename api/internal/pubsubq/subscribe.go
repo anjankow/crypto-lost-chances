@@ -1,7 +1,9 @@
 package pubsubq
 
 import (
+	"api/internal/config"
 	"context"
+	"errors"
 
 	"cloud.google.com/go/pubsub"
 )
@@ -11,12 +13,29 @@ const (
 	topicName        = "progress-update"
 )
 
-func Subscribe(ctx context.Context, client *pubsub.Client) (*pubsub.Subscription, error) {
+func SubscribeToProgressUpdates(ctx context.Context) (sub *pubsub.Subscription, closerFunc func(), err error) {
 
-	sub := client.Subscription(subscriptionName)
-	if sub != nil {
-		return sub, nil
+	cctx, cancel := context.WithCancel(ctx)
+	var client *pubsub.Client
+
+	closerFunc = func() {
+		cancel()
+		client.Close()
 	}
+
+	client, err = pubsub.NewClient(cctx, config.GetProjectID())
+	if err != nil {
+		err = errors.New("failed to create a pubsub client: " + err.Error())
+		return
+	}
+
+	sub = client.Subscription(subscriptionName)
+	if sub != nil {
+		// subscription already created, simply return
+		return
+	}
+
+	// the subscription doesn't exist yet, create
 
 	subCfg := pubsub.SubscriptionConfig{
 		Topic:                 client.Topic(topicName),
@@ -24,13 +43,14 @@ func Subscribe(ctx context.Context, client *pubsub.Client) (*pubsub.Subscription
 		Detached:              false,
 	}
 
-	sub, err := client.CreateSubscription(ctx, subscriptionName, subCfg)
+	sub, err = client.CreateSubscription(cctx, subscriptionName, subCfg)
 	if err != nil {
-		return nil, err
+		err = errors.New("failed to create a subscription: " + err.Error())
+		return
 	}
 
 	sub.ReceiveSettings.Synchronous = true
 	sub.ReceiveSettings.MaxOutstandingMessages = 1
 
-	return sub, nil
+	return
 }

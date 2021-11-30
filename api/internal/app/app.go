@@ -1,7 +1,6 @@
 package app
 
 import (
-	"api/internal/config"
 	"api/internal/pubsubq"
 	"context"
 	"errors"
@@ -12,13 +11,9 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	progressTopic = "progress-update"
-)
-
 type App struct {
-	Logger   *zap.Logger
-	psClient *pubsub.Client
+	Logger *zap.Logger
+	sub    *pubsub.Subscription
 }
 
 type UserInput struct {
@@ -32,18 +27,20 @@ type Results struct {
 }
 
 func NewApp(l *zap.Logger) (app App, closer func(), err error) {
-	projectID := config.GetProjectID()
-
-	client, err := pubsub.NewClient(context.Background(), projectID)
+	sub, closer, err := pubsubq.SubscribeToProgressUpdates(context.Background())
 	if err != nil {
-		err = errors.New("failed to create a pubsub client: " + err.Error())
-		return
+		l.Error(err.Error())
+		closer()
+		closer = func() {}
+
+		sub = nil
 	}
 
-	return App{
-		Logger:   l,
-		psClient: client,
-	}, func() { client.Close() }, nil
+	app = App{
+		Logger: l,
+		sub:    sub,
+	}
+	return
 }
 
 func (a App) ProcessCalculateReq(ctx context.Context, input UserInput) (Results, error) {
@@ -56,6 +53,10 @@ func (a App) ProcessCalculateReq(ctx context.Context, input UserInput) (Results,
 
 // ListenProgress listens on the queue for the request progress
 func (a App) ListenProgress(ctx context.Context, requestID string, callback func(progress int)) error {
+
+	if a.sub == nil {
+		return errors.New("not subscribed to the queue")
+	}
 
 	pubsubCallback := func(ctx context.Context, msg *pubsub.Message) {
 		progressMsg, err := pubsubq.GetProgressMessage(msg)
@@ -72,11 +73,6 @@ func (a App) ListenProgress(ctx context.Context, requestID string, callback func
 		callback(progressMsg.Progress)
 	}
 
-	sub, err := pubsubq.Subscribe(ctx, a.psClient)
-	if err != nil {
-		return err
-	}
-
 	defer func() {
 		a.Logger.Debug("finished listening...", zap.String("requestID", requestID))
 	}()
@@ -84,5 +80,5 @@ func (a App) ListenProgress(ctx context.Context, requestID string, callback func
 	// blocking call
 	// receives messages on multiple goroutines
 	a.Logger.Debug("listening on progress queue...", zap.String("requestID", requestID))
-	return sub.Receive(ctx, pubsubCallback)
+	return a.sub.Receive(ctx, pubsubCallback)
 }
