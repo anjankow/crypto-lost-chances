@@ -122,6 +122,7 @@ func (r *Reader) receiveFromPubsub(ctx context.Context) error {
 		r.progressPerReq[progressMsg.RequestID] <- progressMsg.Progress
 
 		if progressMsg.Progress >= maxProgress {
+			r.logger.Debug("progress reached max, closing the channel", zap.String("requestID", progressMsg.RequestID))
 			close(r.progressPerReq[progressMsg.RequestID])
 		}
 	}
