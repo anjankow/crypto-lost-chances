@@ -48,8 +48,6 @@ func (r *Reader) Start(ctx context.Context) (closer func(), err error) {
 	}
 
 	if err != nil {
-		closer()
-
 		err = errors.New("subscribing to pubsub failed: " + err.Error())
 		return
 	}

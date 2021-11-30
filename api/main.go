@@ -2,7 +2,9 @@ package main
 
 import (
 	"api/internal/app"
+	progressupdates "api/internal/progress_updates"
 	"api/internal/server"
+	"context"
 	"log"
 	"time"
 
@@ -21,12 +23,21 @@ func main() {
 
 	logger.Info("Service started")
 
-	service, closer, err := app.NewApp(logger)
+	reader := progressupdates.NewReader(logger)
+	readerCloser, err := reader.Start(context.Background())
+	defer readerCloser()
+
 	if err != nil {
-		logger.Fatal("New service creation failed: ", zap.Error(err))
+		logger.Fatal("failed to start the progress updates reader: " + err.Error())
+	}
+
+	service, closer, err := app.NewApp(logger)
+	defer closer()
+
+	if err != nil {
+		logger.Fatal("service creation failed: " + err.Error())
 		return
 	}
-	defer closer()
 
 	// HTTP SERVER
 	ser := server.NewServer(logger, &service)
