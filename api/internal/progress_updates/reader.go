@@ -25,7 +25,8 @@ type Reader struct {
 
 func NewReader(logger *zap.Logger) Reader {
 	return Reader{
-		logger: logger,
+		logger:         logger,
+		progressPerReq: map[string]chan int{},
 	}
 }
 

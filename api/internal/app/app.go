@@ -1,19 +1,17 @@
 package app
 
 import (
-	"api/internal/pubsubq"
+	progressupdates "api/internal/progress_updates"
 	"context"
 	"errors"
-	"strings"
 	"time"
 
-	"cloud.google.com/go/pubsub"
 	"go.uber.org/zap"
 )
 
 type App struct {
-	Logger *zap.Logger
-	sub    *pubsub.Subscription
+	Logger         *zap.Logger
+	progressReader *progressupdates.Reader
 }
 
 type UserInput struct {
@@ -26,19 +24,15 @@ type Results struct {
 	Income         float32
 }
 
-func NewApp(l *zap.Logger) (app App, closer func(), err error) {
-	sub, closer, err := pubsubq.SubscribeToProgressUpdates(context.Background())
-	if err != nil {
-		l.Error(err.Error())
-		closer()
-		closer = func() {}
-
-		sub = nil
+func NewApp(l *zap.Logger, progressReader *progressupdates.Reader) (app App, err error) {
+	if progressReader == nil {
+		err = errors.New("progress reader is nil")
+		return
 	}
 
 	app = App{
-		Logger: l,
-		sub:    sub,
+		Logger:         l,
+		progressReader: progressReader,
 	}
 	return
 }
@@ -52,33 +46,13 @@ func (a App) ProcessCalculateReq(ctx context.Context, input UserInput) (Results,
 }
 
 // ListenProgress listens on the queue for the request progress
-func (a App) ListenProgress(ctx context.Context, requestID string, callback func(progress int)) error {
-
-	if a.sub == nil {
-		return errors.New("not subscribed to the queue")
+func (a App) ListenProgress(ctx context.Context, requestID string, callback func(progress int)) {
+	channel := a.progressReader.SubscribeToProgressUpdates(requestID)
+	for p := range channel {
+		a.Logger.Debug("received a progress update", zap.String("requestID", requestID))
+		callback(p)
 	}
 
-	pubsubCallback := func(ctx context.Context, msg *pubsub.Message) {
-		progressMsg, err := pubsubq.GetProgressMessage(msg)
-		if err != nil {
-			a.Logger.Warn("can't unmarshall the message: " + err.Error())
-			return
-		}
+	// progress == 100, here possibly some other actions on this event
 
-		if progressMsg.RequestID != requestID {
-			a.Logger.Debug("received pubsub message for another request", zap.String("expected", strings.Split(requestID, "-")[0]), zap.String("received", strings.Split(progressMsg.RequestID, "-")[0]))
-			return
-		}
-
-		callback(progressMsg.Progress)
-	}
-
-	defer func() {
-		a.Logger.Debug("finished listening...", zap.String("requestID", requestID))
-	}()
-
-	// blocking call
-	// receives messages on multiple goroutines
-	a.Logger.Debug("listening on progress queue...", zap.String("requestID", requestID))
-	return a.sub.Receive(ctx, pubsubCallback)
 }

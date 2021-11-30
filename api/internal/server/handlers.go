@@ -41,13 +41,7 @@ func (w worker) sendProgressUpdate(ctx context.Context, requestID string) error 
 		}
 	}
 
-	cctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	err := w.app.ListenProgress(cctx, requestID, callback)
-	if err != nil {
-		return errors.New("listening the progress failed: " + err.Error())
-	}
+	w.app.ListenProgress(ctx, requestID, callback)
 
 	w.app.Logger.Debug("end of progress updates")
 

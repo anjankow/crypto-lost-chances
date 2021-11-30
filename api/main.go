@@ -31,9 +31,7 @@ func main() {
 		logger.Fatal("failed to start the progress updates reader: " + err.Error())
 	}
 
-	service, closer, err := app.NewApp(logger)
-	defer closer()
-
+	service, err := app.NewApp(logger, &reader)
 	if err != nil {
 		logger.Fatal("service creation failed: " + err.Error())
 		return
