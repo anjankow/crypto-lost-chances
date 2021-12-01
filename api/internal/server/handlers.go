@@ -4,6 +4,7 @@ import (
 	"api/internal/app"
 	"api/internal/server/middleware"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"html/template"
@@ -27,9 +28,61 @@ type worker struct {
 }
 
 type ResultsTemplate struct {
-	Cryptocurrency string
-	Income         float32
-	RequestID      string
+	// Cryptocurrency string
+	// Income         float32
+	RequestID string
+}
+
+func results(a *app.App, w http.ResponseWriter, r *http.Request) (status int, err error) {
+	status = http.StatusBadRequest
+
+	conn, err := upgradeConnection(w, r)
+	if err != nil {
+		return
+	}
+
+	// get request ID
+	parsed, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		return
+	}
+
+	requestID := parsed["id"][0]
+	a.Logger.Debug("getting results for request " + requestID)
+
+	status = http.StatusInternalServerError
+
+	results, err := a.GetResults(r.Context(), requestID)
+	if err != nil {
+		return
+	}
+
+	a.Logger.Debug("results obtained")
+	bytes, err := json.Marshal(results)
+	if err != nil {
+		err = errors.New("can't marshal the results: " + err.Error())
+		return
+	}
+	if err = conn.WriteMessage(websocket.BinaryMessage, bytes); err != nil {
+		err = errors.New("failed to write results to the socket: " + err.Error())
+		return
+	}
+
+	return http.StatusOK, nil
+}
+
+func upgradeConnection(w http.ResponseWriter, r *http.Request) (conn *websocket.Conn, err error) {
+	upgrader.CheckOrigin = func(r *http.Request) bool {
+		return true
+	}
+
+	conn, err = upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		err = errors.New("upgrade failed: " + err.Error())
+		return
+	}
+
+	return
 }
 
 func (w worker) sendProgressUpdate(ctx context.Context, requestID string) error {
@@ -133,9 +186,7 @@ func handleCalculate(a *app.App, w http.ResponseWriter, r *http.Request) (int, e
 	}
 	a.Logger.Info("calculate request", zap.String("month", userInput.MonthYear.Month().String()), zap.Int("month", userInput.MonthYear.Year()), zap.Int("amount", userInput.Amount))
 
-	// MAGIC //
-	results, err := a.StartCalculation(r.Context(), userInput)
-	if err != nil {
+	if err = a.StartCalculation(r.Context(), userInput); err != nil {
 		return http.StatusInternalServerError, errors.New("can't process the request: " + err.Error())
 	}
 
@@ -144,19 +195,11 @@ func handleCalculate(a *app.App, w http.ResponseWriter, r *http.Request) (int, e
 		return http.StatusInternalServerError, errors.New("can't create the template: " + err.Error())
 	}
 
-	if err = tmpl.Execute(w, makeResultTemplateValues(requestID, results)); err != nil {
+	if err = tmpl.Execute(w, ResultsTemplate{RequestID: requestID}); err != nil {
 		return http.StatusInternalServerError, errors.New("can't execute the template: " + err.Error())
 	}
 
 	return http.StatusOK, nil
-}
-
-func makeResultTemplateValues(requestID string, results app.Results) ResultsTemplate {
-	return ResultsTemplate{
-		Cryptocurrency: results.Cryptocurrency,
-		Income:         results.Income,
-		RequestID:      requestID,
-	}
 }
 
 func healthcheck(w http.ResponseWriter, _ *http.Request) {

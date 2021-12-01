@@ -37,12 +37,11 @@ func NewApp(l *zap.Logger, progressReader *progressupdates.Reader) (app App, err
 	return
 }
 
-func (a App) StartCalculation(ctx context.Context, input UserInput) (Results, error) {
-	results := Results{Cryptocurrency: "ADA", Income: float32(input.Amount * 2)}
+func (a App) StartCalculation(ctx context.Context, input UserInput) error {
 
 	// calls the main app
 
-	return results, nil
+	return nil
 }
 
 // ListenProgress listens on the queue for the request progress
@@ -57,4 +56,8 @@ func (a App) ListenProgress(ctx context.Context, requestID string, callback func
 
 	// progress == 100, here possibly some other actions on this event
 
+}
+
+func (a App) GetResults(ctx context.Context, requestID string) (Results, error) {
+	return Results{Cryptocurrency: "ADA", Income: float32(123)}, nil
 }

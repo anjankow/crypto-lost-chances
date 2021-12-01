@@ -58,9 +58,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" href="favicon.png">
     <script type="text/javascript">
+        var scheme = window.location.protocol == "https:" ? 'wss://' : 'ws://';
+
         function sleep(ms) {
            return new Promise(resolve => setTimeout(resolve, ms));
         }
+
+
+        function getResults() {
+
+            var webSocketUri =  scheme
+                                + window.location.hostname
+                                + (location.port ? ':'+location.port: '')
+                                + '/results?id={{.RequestID}}';
+            console.log("opening socket "+webSocketUri);
+            
+            var client = new WebSocket(webSocketUri);
+            client.onopen = function() {
+                console.log('results web socket connected');
+            };
+            client.onclose = function() {
+                console.log('results web socket closed');
+            };
+      
+            client.onmessage = (e) => {
+                console.log('results update! ' + e.data)
+                client.close();
+                var jsonResults = JSON.parse(e.data);
+                console.log(String(jsonResults));
+
+                document.getElementById('currency').textContent = jsonResults["currency"];
+                document.getElementById('income').textContent = jsonResults["income"];
+                document.getElementById('result').hidden = false;
+            }
+
+            
+        }
+
         window.onload = function() {
             progressBar = document.getElementById('progressbar');
             console.log(progressBar.value);
@@ -86,7 +120,8 @@
                 const msg = String(e.data)
                 progressBar.value = e.data;
                 if (progressBar.value >= 100) {
-                    document.getElementById('result').hidden = false;
+                    client.close();
+                    getResults();
                 }
             }
         }
@@ -106,9 +141,6 @@
             <input class="button" type="submit" value="Check again"/>
         </form>
     </div>
-
-    
-
 
 </body>
 </html>

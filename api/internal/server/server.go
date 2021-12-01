@@ -29,6 +29,7 @@ type AppHandleFunc func(*app.App, http.ResponseWriter, *http.Request) (int, erro
 func (ser server) registerHandlers(router *mux.Router) {
 	router.PathPrefix("/calculate").Methods("POST").Handler(middleware.AddRequestID(appHandler{app: ser.app, Handle: handleCalculate}))
 	router.PathPrefix("/progress").Handler(appHandler{app: ser.app, Handle: progress})
+	router.PathPrefix("/results").Handler(appHandler{app: ser.app, Handle: results})
 
 	router.HandleFunc("/health", healthcheck)
 
