@@ -48,7 +48,7 @@ func results(a *app.App, w http.ResponseWriter, r *http.Request) (status int, er
 	}
 
 	requestID := parsed["id"][0]
-	a.Logger.Debug("getting results for request " + requestID)
+	a.Logger.Debug("getting results for request", zap.String("requestID", requestID))
 
 	status = http.StatusInternalServerError
 
@@ -57,13 +57,14 @@ func results(a *app.App, w http.ResponseWriter, r *http.Request) (status int, er
 		return
 	}
 
-	a.Logger.Debug("results obtained")
+	a.Logger.Debug("results obtained", zap.String("requestID", requestID))
 	bytes, err := json.Marshal(results)
 	if err != nil {
 		err = errors.New("can't marshal the results: " + err.Error())
 		return
 	}
-	if err = conn.WriteMessage(websocket.BinaryMessage, bytes); err != nil {
+
+	if err = conn.WriteMessage(websocket.TextMessage, bytes); err != nil {
 		err = errors.New("failed to write results to the socket: " + err.Error())
 		return
 	}
@@ -88,9 +89,9 @@ func upgradeConnection(w http.ResponseWriter, r *http.Request) (conn *websocket.
 func (w worker) sendProgressUpdate(ctx context.Context, requestID string) error {
 
 	callback := func(progress int) {
-		w.app.Logger.Debug("progress update", zap.Int("progress", progress))
+		w.app.Logger.Debug("progress update", zap.Int("progress", progress), zap.String("requestID", requestID))
 		if err := w.conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprint(progress))); err != nil {
-			w.app.Logger.Error("writing the progress update failed", zap.Error(err))
+			w.app.Logger.Error("writing the progress update failed", zap.Error(err), zap.String("requestID", requestID))
 		}
 	}
 
@@ -126,7 +127,7 @@ func progress(a *app.App, w http.ResponseWriter, r *http.Request) (status int, e
 		return
 	}
 	requestID := parsed["id"][0]
-	a.Logger.Debug("displaying progress updates for request " + requestID)
+	a.Logger.Debug("displaying progress updates", zap.String("requestID", requestID))
 
 	if err = workerInstance.sendProgressUpdate(r.Context(), requestID); err != nil {
 		return
@@ -184,7 +185,7 @@ func handleCalculate(a *app.App, w http.ResponseWriter, r *http.Request) (int, e
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
-	a.Logger.Info("calculate request", zap.String("month", userInput.MonthYear.Month().String()), zap.Int("month", userInput.MonthYear.Year()), zap.Int("amount", userInput.Amount))
+	a.Logger.Info("calculate request", zap.String("month", userInput.MonthYear.Month().String()), zap.Int("month", userInput.MonthYear.Year()), zap.Int("amount", userInput.Amount), zap.String("requestID", requestID))
 
 	if err = a.StartCalculation(r.Context(), userInput); err != nil {
 		return http.StatusInternalServerError, errors.New("can't process the request: " + err.Error())

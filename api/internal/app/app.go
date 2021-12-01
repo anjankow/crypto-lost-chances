@@ -20,8 +20,8 @@ type UserInput struct {
 }
 
 type Results struct {
-	Cryptocurrency string
-	Income         float32
+	Cryptocurrency string `json:"currency"`
+	Income         string `json:"income"`
 }
 
 func NewApp(l *zap.Logger, progressReader *progressupdates.Reader) (app App, err error) {
@@ -59,5 +59,5 @@ func (a App) ListenProgress(ctx context.Context, requestID string, callback func
 }
 
 func (a App) GetResults(ctx context.Context, requestID string) (Results, error) {
-	return Results{Cryptocurrency: "ADA", Income: float32(123)}, nil
+	return Results{Cryptocurrency: "ADA", Income: "€123"}, nil
 }

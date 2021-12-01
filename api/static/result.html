@@ -84,11 +84,10 @@
             client.onmessage = (e) => {
                 console.log('results update! ' + e.data)
                 client.close();
-                var jsonResults = JSON.parse(e.data);
-                console.log(String(jsonResults));
+                var jsonResults = JSON.parse(String(e.data));
 
-                document.getElementById('currency').textContent = jsonResults["currency"];
-                document.getElementById('income').textContent = jsonResults["income"];
+                document.getElementById('currency').innerHTML = jsonResults.currency;
+                document.getElementById('income').innerHTML = jsonResults.income;
                 document.getElementById('result').hidden = false;
             }
 
@@ -98,8 +97,7 @@
         window.onload = function() {
             progressBar = document.getElementById('progressbar');
             console.log(progressBar.value);
-            
-        
+
             var scheme = window.location.protocol == "https:" ? 'wss://' : 'ws://';
             var webSocketUri =  scheme
                                 + window.location.hostname
@@ -133,9 +131,9 @@
 
     <div name="result" id="result" hidden="true">
         <p>If you invested in</p>
-        <p class="results" id="currency" name="currency">{{.Cryptocurrency}}</p>
+        <p class="results" id="currency" name="currency">??</p>
         <p>you could have earned up to...</p>
-        <p class="results" id="income" name="income">{{.Income}}€</p>
+        <p class="results" id="income" name="income">??</p>
 
         <form action="/" method="POST">
             <input class="button" type="submit" value="Check again"/>

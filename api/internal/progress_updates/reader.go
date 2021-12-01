@@ -18,8 +18,9 @@ const (
 )
 
 type Reader struct {
-	logger         *zap.Logger
-	sub            *pubsub.Subscription
+	logger *zap.Logger
+	sub    *pubsub.Subscription
+	// this approach could be improved - problem with writing to the closed channel on incoming garbage messages
 	progressPerReq map[string]chan int
 	wg             sync.WaitGroup
 }
@@ -124,7 +125,7 @@ func (r *Reader) receiveFromPubsub(ctx context.Context) error {
 			return
 		}
 
-		r.logger.Info("progress read", zap.String("requestID", progressMsg.RequestID), zap.Int("progress", progressMsg.Progress))
+		r.logger.Debug("progress read", zap.String("requestID", progressMsg.RequestID), zap.Int("progress", progressMsg.Progress))
 
 		_, ok := r.progressPerReq[progressMsg.RequestID]
 		if !ok {
