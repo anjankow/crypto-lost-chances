@@ -10,7 +10,7 @@ const (
 	Development RunEnvironment = "dev"
 	Production  RunEnvironment = "prod"
 
-	defaultLocalPort = ":8081"
+	defaultLocalPort = ":8082"
 
 	defaultProjectID = "crypto-lost-chances"
 )

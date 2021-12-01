@@ -1,144 +1,97 @@
 package progressupdates
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"lost-chances-calc/internal/config"
+	"sync"
+
 	"cloud.google.com/go/pubsub"
 	"go.uber.org/zap"
 )
 
 const (
-	subscriptionName = "progressSub"
-	topicName        = "progress-update"
+	topicName = "progress-update"
 
 	maxProgress = 100
+	minProgress = 0
 )
 
 type Writer struct {
 	logger *zap.Logger
-	client *pubsub.Client
+	topic  *pubsub.Topic
+	wg     *sync.WaitGroup
 }
 
 func NewWriter(logger *zap.Logger) Writer {
 	return Writer{
 		logger: logger,
+		wg:     &sync.WaitGroup{},
 	}
 }
 
-func (w *Writer) Start() error {
+func (w *Writer) Init(ctx context.Context) (closer func(), err error) {
+	cctx, ctxCancel := context.WithCancel(ctx)
+
+	var client *pubsub.Client
+
+	closer = func() {
+		ctxCancel()
+		client.Close()
+	}
+
+	client, err = pubsub.NewClient(cctx, config.GetProjectID())
+	if err != nil {
+		err = errors.New("failed to create a pubsub client: " + err.Error())
+		return
+	}
+
+	topic := client.Topic(topicName)
+	if topic == nil {
+		topic, err = client.CreateTopic(ctx, topicName)
+		if err != nil {
+			err = errors.New("failed to create a new topic: " + err.Error())
+			return
+		}
+		topic.EnableMessageOrdering = true
+
+	}
+
+	w.topic = topic
+
+	return
+
+}
+
+func (w Writer) PublishProgress(ctx context.Context, requestID string, progress int) error {
+	if progress > maxProgress || progress < minProgress {
+		return fmt.Errorf("invalid progress value, shall be in range (0,100): ", progress)
+	}
+
+	msgBody := progressMessage{
+		RequestID: requestID,
+		Progress:  progress,
+	}
+	bytes, err := json.Marshal(msgBody)
+	if err != nil {
+		return errors.New("error when marshalling the message: " + err.Error())
+	}
+
+	result := w.topic.Publish(ctx, &pubsub.Message{
+		Data: bytes,
+	})
+
+	w.wg.Add(1)
+	go func(result *pubsub.PublishResult) {
+		defer w.wg.Done()
+
+		_, err := result.Get(ctx)
+		if err != nil {
+			w.logger.Error("error when publishing the progress message: " + err.Error())
+		}
+	}(result)
+
 	return nil
 }
-
-func (r *Writer) WriteProgressUpdate(msg ProgressMessage) {
-
-}
-
-// func (r *Reader) SubscribeToProgressUpdates(requestID string) (channel chan int, finish func()) {
-// 	_, ok := r.progressPerReq[requestID]
-// 	if !ok {
-// 		r.progressPerReq[requestID] = make(chan int, maxProgress)
-// 	}
-
-// 	channel = r.progressPerReq[requestID]
-// 	finish = func() {
-// 		delete(r.progressPerReq, requestID)
-// 	}
-
-// 	return
-// }
-
-// func (r *Reader) Start(ctx context.Context) (closer func(), err error) {
-
-// 	cctx, ctxCancel := context.WithCancel(ctx)
-// 	sub, subCloser, err := subscribe(cctx)
-// 	closer = func() {
-// 		subCloser()
-// 		ctxCancel()
-// 		r.wg.Wait()
-// 	}
-
-// 	if err != nil {
-// 		err = errors.New("subscribing to pubsub failed: " + err.Error())
-// 		return
-// 	}
-
-// 	r.sub = sub
-
-// 	r.wg.Add(1)
-// 	go func() {
-// 		if err := r.receiveFromPubsub(cctx); err != nil {
-// 			r.logger.Error("error when receiving from pubsub: " + err.Error())
-// 		}
-// 		r.logger.Info("finished receiving from pubsub")
-// 		r.wg.Done()
-// 	}()
-
-// 	return
-
-// }
-
-// func subscribe(ctx context.Context) (sub *pubsub.Subscription, closerFunc func(), err error) {
-
-// 	var client *pubsub.Client
-
-// 	closerFunc = func() {
-// 		client.Close()
-// 	}
-
-// 	client, err = pubsub.NewClient(ctx, config.GetProjectID())
-// 	if err != nil {
-// 		err = errors.New("failed to create a pubsub client: " + err.Error())
-// 		return
-// 	}
-
-// 	sub = client.Subscription(subscriptionName)
-// 	if sub != nil {
-// 		// subscription already created, simply return
-// 		return
-// 	}
-
-// 	// the subscription doesn't exist yet, create
-
-// 	subCfg := pubsub.SubscriptionConfig{
-// 		Topic:                 client.Topic(topicName),
-// 		EnableMessageOrdering: true,
-// 		Detached:              false,
-// 	}
-
-// 	sub, err = client.CreateSubscription(ctx, subscriptionName, subCfg)
-// 	if err != nil {
-// 		err = errors.New("failed to create a subscription: " + err.Error())
-// 		return
-// 	}
-
-// 	sub.ReceiveSettings.Synchronous = true
-
-// 	return
-// }
-
-// func (r *Reader) receiveFromPubsub(ctx context.Context) error {
-
-// 	pubsubCallback := func(ctx context.Context, msg *pubsub.Message) {
-// 		progressMsg, err := unmarshalProgressMessage(msg)
-// 		if err != nil {
-// 			r.logger.Warn("can't unmarshall the message: " + err.Error())
-// 			return
-// 		}
-
-// 		r.logger.Debug("progress read", zap.String("requestID", progressMsg.RequestID), zap.Int("progress", progressMsg.Progress))
-
-// 		_, ok := r.progressPerReq[progressMsg.RequestID]
-// 		if !ok {
-// 			r.progressPerReq[progressMsg.RequestID] = make(chan int, maxProgress)
-// 		}
-// 		r.progressPerReq[progressMsg.RequestID] <- progressMsg.Progress
-
-// 		if progressMsg.Progress >= maxProgress {
-// 			r.logger.Debug("progress reached max, closing the channel", zap.String("requestID", progressMsg.RequestID))
-// 			close(r.progressPerReq[progressMsg.RequestID])
-// 		}
-// 	}
-
-// 	// blocking call
-// 	// receives messages on multiple goroutines
-// 	r.logger.Debug("listening on progress queue...")
-// 	return r.sub.Receive(ctx, pubsubCallback)
-// }

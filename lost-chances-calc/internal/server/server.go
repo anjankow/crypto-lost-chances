@@ -26,6 +26,7 @@ type appHandler struct {
 type AppHandleFunc func(*app.App, http.ResponseWriter, *http.Request) (int, error)
 
 func (ser server) registerHandlers(router *mux.Router) {
+	router.PathPrefix("/calculate").Methods("POST").Handler(appHandler{app: ser.app, Handle: calculate})
 
 	router.HandleFunc("/health", healthcheck)
 

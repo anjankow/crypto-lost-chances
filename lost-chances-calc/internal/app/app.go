@@ -26,7 +26,7 @@ type Results struct {
 
 func NewApp(l *zap.Logger, progressWriter *progressupdates.Writer) (app App, err error) {
 	if progressWriter == nil {
-		err = errors.New("progress reader is nil")
+		err = errors.New("progress writer is nil")
 		return
 	}
 
@@ -37,9 +37,14 @@ func NewApp(l *zap.Logger, progressWriter *progressupdates.Writer) (app App, err
 	return
 }
 
-func (a App) StartCalculation(ctx context.Context, input UserInput) error {
+func (a App) StartCalculation(ctx context.Context, requestID string, input UserInput) error {
 
-	// calls the main app
+	// gets the data and calculates
+
+	for i := 0; i <= 100; i += 20 {
+		a.progressWriter.PublishProgress(ctx, requestID, i)
+		time.Sleep(1 * time.Second)
+	}
 
 	return nil
 }

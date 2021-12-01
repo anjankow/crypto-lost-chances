@@ -1,6 +1,6 @@
 package progressupdates
 
-type ProgressMessage struct {
+type progressMessage struct {
 	RequestID string `json:"requestID"`
 	Progress  int    `json:"progress"`
 }
