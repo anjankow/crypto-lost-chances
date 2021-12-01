@@ -73,7 +73,7 @@ func progress(a *app.App, w http.ResponseWriter, r *http.Request) (status int, e
 		return
 	}
 	requestID := parsed["id"][0]
-	a.Logger.Debug("sending progress updates for request " + requestID)
+	a.Logger.Debug("displaying progress updates for request " + requestID)
 
 	if err = workerInstance.sendProgressUpdate(r.Context(), requestID); err != nil {
 		return
@@ -134,7 +134,7 @@ func handleCalculate(a *app.App, w http.ResponseWriter, r *http.Request) (int, e
 	a.Logger.Info("calculate request", zap.String("month", userInput.MonthYear.Month().String()), zap.Int("month", userInput.MonthYear.Year()), zap.Int("amount", userInput.Amount))
 
 	// MAGIC //
-	results, err := a.ProcessCalculateReq(r.Context(), userInput)
+	results, err := a.StartCalculation(r.Context(), userInput)
 	if err != nil {
 		return http.StatusInternalServerError, errors.New("can't process the request: " + err.Error())
 	}

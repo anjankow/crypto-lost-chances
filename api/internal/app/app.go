@@ -37,7 +37,7 @@ func NewApp(l *zap.Logger, progressReader *progressupdates.Reader) (app App, err
 	return
 }
 
-func (a App) ProcessCalculateReq(ctx context.Context, input UserInput) (Results, error) {
+func (a App) StartCalculation(ctx context.Context, input UserInput) (Results, error) {
 	results := Results{Cryptocurrency: "ADA", Income: float32(input.Amount * 2)}
 
 	// calls the main app
@@ -47,7 +47,9 @@ func (a App) ProcessCalculateReq(ctx context.Context, input UserInput) (Results,
 
 // ListenProgress listens on the queue for the request progress
 func (a App) ListenProgress(ctx context.Context, requestID string, callback func(progress int)) {
-	channel := a.progressReader.SubscribeToProgressUpdates(requestID)
+	channel, finish := a.progressReader.SubscribeToProgressUpdates(requestID)
+	defer finish()
+
 	for p := range channel {
 		a.Logger.Debug("received a progress update", zap.String("requestID", requestID))
 		callback(p)

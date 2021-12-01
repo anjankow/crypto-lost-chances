@@ -32,13 +32,18 @@ func NewReader(logger *zap.Logger) Reader {
 	}
 }
 
-func (r *Reader) SubscribeToProgressUpdates(requestID string) chan int {
+func (r *Reader) SubscribeToProgressUpdates(requestID string) (channel chan int, finish func()) {
 	_, ok := r.progressPerReq[requestID]
 	if !ok {
 		r.progressPerReq[requestID] = make(chan int, maxProgress)
 	}
 
-	return r.progressPerReq[requestID]
+	channel = r.progressPerReq[requestID]
+	finish = func() {
+		delete(r.progressPerReq, requestID)
+	}
+
+	return
 }
 
 func (r *Reader) Start(ctx context.Context) (closer func(), err error) {
@@ -119,7 +124,7 @@ func (r *Reader) receiveFromPubsub(ctx context.Context) error {
 			return
 		}
 
-		r.logger.Info("received", zap.String("requestID", progressMsg.RequestID), zap.Int("progress", progressMsg.Progress))
+		r.logger.Info("progress read", zap.String("requestID", progressMsg.RequestID), zap.Int("progress", progressMsg.Progress))
 
 		_, ok := r.progressPerReq[progressMsg.RequestID]
 		if !ok {
