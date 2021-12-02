@@ -1,0 +1,5 @@
+runtime: go116
+
+env_variables:
+  ENV: production
+  PROJECT_ID: crypto-lost-chances
