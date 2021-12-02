@@ -1,15 +1,56 @@
 package server
 
 import (
+	"encoding/json"
+	"errors"
+	"io/ioutil"
 	"lost-chances-calc/internal/app"
 	"net/http"
+	"time"
 )
 
-func healthcheck(w http.ResponseWriter, _ *http.Request) {
-	w.Write([]byte("all good here"))
+const (
+	contentType = "application/json"
+)
+
+type calcRequestBody struct {
+	RequestID string    `json:"requestID"`
+	MonthYear time.Time `json:"monthYear`
+	Amount    int       `json:"amount"`
 }
 
 func calculate(a *app.App, w http.ResponseWriter, r *http.Request) (int, error) {
+	ctx := r.Context()
+	a.Logger.Debug("handling calculate request")
 
-	return 0, nil
+	if r.Header.Get("Content-Type") != contentType {
+		return http.StatusUnsupportedMediaType, errors.New("incorrect content-type: expected: " + contentType + ", received: " + r.Header.Get("Content-Type"))
+	}
+
+	bodyBytes, err := ioutil.ReadAll(r.Body)
+	r.Body.Close()
+	if err != nil {
+		return http.StatusInternalServerError, errors.New("can't read the request body: " + err.Error())
+	}
+
+	var body calcRequestBody
+	if err = json.Unmarshal(bodyBytes, &body); err != nil {
+		return http.StatusBadRequest, errors.New("invalid body: " + err.Error())
+	}
+
+	input := app.CalcInput{
+		MonthYear: body.MonthYear,
+		Amount:    body.Amount,
+	}
+
+	if err := a.StartCalculation(ctx, body.RequestID, input); err != nil {
+		return http.StatusInternalServerError, errors.New("failed to start the calculation: " + err.Error())
+	}
+
+	return http.StatusOK, nil
+
+}
+
+func healthcheck(w http.ResponseWriter, _ *http.Request) {
+	w.Write([]byte("all good here"))
 }

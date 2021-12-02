@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	progressupdates "lost-chances-calc/internal/progress_updates"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -12,9 +13,11 @@ import (
 type App struct {
 	Logger         *zap.Logger
 	progressWriter *progressupdates.Writer
+
+	wg *sync.WaitGroup
 }
 
-type UserInput struct {
+type CalcInput struct {
 	MonthYear time.Time
 	Amount    int
 }
@@ -33,18 +36,25 @@ func NewApp(l *zap.Logger, progressWriter *progressupdates.Writer) (app App, err
 	app = App{
 		Logger:         l,
 		progressWriter: progressWriter,
+		wg:             &sync.WaitGroup{},
 	}
 	return
 }
 
-func (a App) StartCalculation(ctx context.Context, requestID string, input UserInput) error {
+func (a App) StartCalculation(ctx context.Context, requestID string, input CalcInput) error {
 
 	// gets the data and calculates
 
-	for i := 0; i <= 100; i += 20 {
-		a.progressWriter.PublishProgress(ctx, requestID, i)
-		time.Sleep(1 * time.Second)
-	}
+	a.wg.Add(1)
+	go func() {
+		defer a.wg.Done()
+
+		for i := 0; i <= 100; i += 20 {
+			a.progressWriter.PublishProgress(ctx, requestID, i)
+			time.Sleep(1 * time.Second)
+		}
+
+	}()
 
 	return nil
 }

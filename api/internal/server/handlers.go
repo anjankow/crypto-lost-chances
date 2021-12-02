@@ -187,7 +187,7 @@ func handleCalculate(a *app.App, w http.ResponseWriter, r *http.Request) (int, e
 	}
 	a.Logger.Info("calculate request", zap.String("month", userInput.MonthYear.Month().String()), zap.Int("month", userInput.MonthYear.Year()), zap.Int("amount", userInput.Amount), zap.String("requestID", requestID))
 
-	if err = a.StartCalculation(r.Context(), requestID, userInput); err != nil {
+	if err = a.StartCalculation(ctx, requestID, userInput); err != nil {
 		return http.StatusInternalServerError, errors.New("can't process the request: " + err.Error())
 	}
 
