@@ -66,6 +66,10 @@ func (w *Writer) Init(ctx context.Context) (closer func(), err error) {
 }
 
 func (w Writer) PublishProgress(ctx context.Context, requestID string, progress int) error {
+	if w.topic == nil {
+		return errors.New("can't publish: the topic is nil")
+	}
+
 	if progress > maxProgress || progress < minProgress {
 		return fmt.Errorf("invalid progress value, shall be in range (0,100): ", progress)
 	}
@@ -92,6 +96,8 @@ func (w Writer) PublishProgress(ctx context.Context, requestID string, progress 
 			w.logger.Error("error when publishing the progress message: " + err.Error())
 		}
 	}(result)
+
+	w.logger.Debug("published progress message", zap.Int("progress", progress), zap.String("requestID", requestID))
 
 	return nil
 }

@@ -49,6 +49,8 @@ func (a App) StartCalculation(ctx context.Context, requestID string, input CalcI
 	go func() {
 		defer a.wg.Done()
 
+		ctx := context.Background() // in not in the request context
+
 		for i := 0; i <= 100; i += 20 {
 			a.progressWriter.PublishProgress(ctx, requestID, i)
 			time.Sleep(1 * time.Second)

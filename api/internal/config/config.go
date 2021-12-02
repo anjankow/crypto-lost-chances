@@ -14,7 +14,7 @@ const (
 
 	defaultProjectID = "crypto-lost-chances"
 
-	lostChancesCalcLocalhost = "localhost:8082"
+	lostChancesCalcLocalhost = "http://localhost:8082"
 )
 
 var (

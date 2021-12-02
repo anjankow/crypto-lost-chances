@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"lost-chances-calc/internal/app"
 	progressupdates "lost-chances-calc/internal/progress_updates"
@@ -23,9 +24,11 @@ func main() {
 	logger.Info("Service started")
 
 	writer := progressupdates.NewWriter(logger)
+	close, err := writer.Init(context.Background())
+	defer close()
 
 	if err != nil {
-		logger.Fatal("failed to start the progress updates reader: " + err.Error())
+		logger.Fatal("failed to initialize the pubsub writer: " + err.Error())
 	}
 
 	service, err := app.NewApp(logger, &writer)
