@@ -13,12 +13,16 @@ const (
 	defaultLocalPort = ":8081"
 
 	defaultProjectID = "crypto-lost-chances"
+
+	lostChancesCalcLocalhost = "localhost:8082"
 )
 
 var (
 	env       RunEnvironment
 	port      string
 	projectID string
+
+	lostChancesCalcHost string
 )
 
 func GetRunEnvironment() RunEnvironment {
@@ -63,4 +67,17 @@ func GetProjectID() string {
 	}
 
 	return projectID
+}
+
+func GetLostChancesCalcHost() string {
+	if lostChancesCalcHost != "" {
+		return lostChancesCalcHost
+	}
+
+	lostChancesCalcHost = os.Getenv("LOST_CHANCES_CALC_HOST")
+	if lostChancesCalcHost == "" {
+		lostChancesCalcHost = lostChancesCalcLocalhost
+	}
+
+	return lostChancesCalcHost
 }

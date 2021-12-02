@@ -1,6 +1,7 @@
 package app
 
 import (
+	lostchancescalc "api/internal/lost_chances_calc"
 	progressupdates "api/internal/progress_updates"
 	"context"
 	"errors"
@@ -12,6 +13,7 @@ import (
 type App struct {
 	Logger         *zap.Logger
 	progressReader *progressupdates.Reader
+	calcClient     lostchancescalc.Client
 }
 
 type UserInput struct {
@@ -33,14 +35,15 @@ func NewApp(l *zap.Logger, progressReader *progressupdates.Reader) (app App, err
 	app = App{
 		Logger:         l,
 		progressReader: progressReader,
+		calcClient:     lostchancescalc.NewClient(l),
 	}
 	return
 }
 
-func (a App) StartCalculation(ctx context.Context, input UserInput) error {
-
-	// calls the main app
-
+func (a App) StartCalculation(ctx context.Context, requestID string, input UserInput) error {
+	if err := a.calcClient.StartCalculation(ctx, requestID, input.MonthYear, input.Amount); err != nil {
+		return errors.New("calculation request failed: " + err.Error())
+	}
 	return nil
 }
 
