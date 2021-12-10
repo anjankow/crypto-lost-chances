@@ -19,7 +19,7 @@ func GetHistoricalPrice(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprint(w, "empty body")
 			return
 		default:
-			log.Printf("json.NewDecoder: %v", err)
+			log.Printf("decoder error: %v", err)
 		}
 
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -28,6 +28,8 @@ func GetHistoricalPrice(w http.ResponseWriter, r *http.Request) {
 
 	if err := input.Validate(); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
+
 	fmt.Fprint(w, html.EscapeString(input.CryptocurrencyName))
 }
