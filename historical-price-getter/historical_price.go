@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	pastLimit = time.Date(2015, time.August, 1, 0, 0, 0, 0, nil)
+	pastLimit = time.Date(2015, time.August, 1, 0, 0, 0, 0, time.Local)
 )
 
 type HistoricalPrice struct {
