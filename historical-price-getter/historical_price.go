@@ -13,7 +13,6 @@ var (
 )
 
 type HistoricalPrice struct {
-	RequestID          string    `json:"requestID"`
 	CryptocurrencyName string    `json:"cryptocurrency"`
 	FiatName           string    `json:"fiat"`
 	MonthYear          time.Time `json:"monthYear"`
@@ -22,9 +21,7 @@ type HistoricalPrice struct {
 }
 
 func (h HistoricalPrice) Validate() (err error) {
-	if h.RequestID == "" {
-		err = multierr.Append(err, errors.New("missing request ID"))
-	}
+
 	if h.CryptocurrencyName == "" {
 		err = multierr.Append(err, errors.New("missing cryptocurrency name"))
 	}
