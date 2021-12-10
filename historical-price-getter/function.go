@@ -4,7 +4,6 @@ package p
 import (
 	"encoding/json"
 	"fmt"
-	"html"
 	"io"
 	"log"
 	"net/http"
@@ -31,5 +30,11 @@ func GetHistoricalPrice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Fprint(w, html.EscapeString(input.CryptocurrencyName))
+	historicalPrice, err := checkPrice(input)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	message := fmt.Sprintln(historicalPrice.CryptocurrencyName, "/", historicalPrice.FiatName, " lowest: ", historicalPrice.PriceLowest, ", highest: ", historicalPrice.PriceHighest)
+	fmt.Fprint(w, message)
 }

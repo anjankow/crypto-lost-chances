@@ -1,8 +1,10 @@
 package p
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
@@ -11,6 +13,16 @@ import (
 const (
 	providerURL = "https://min-api.cryptocompare.com/data/v2/histoday"
 )
+
+type priceData struct {
+	High float64 `json:"high"`
+	Low  float64 `json:"low"`
+}
+
+type providerRsp struct {
+	ResponseStatus string      `json:"Response"`
+	Data           []priceData `json:"Data"`
+}
 
 func checkPrice(input HistoricalPrice) (output HistoricalPrice, err error) {
 
@@ -37,8 +49,45 @@ func checkPrice(input HistoricalPrice) (output HistoricalPrice, err error) {
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		err = errors.New("failed to request historical data: " + err.Error())
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		err = errors.New("error status code received from the provider: " + resp.Status)
+		return
 	}
 
-	resp.Body.Close()
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		err = errors.New("error while reading the provider's response: " + err.Error())
+		return
+	}
+
+	presp := providerRsp{}
+	if jsonErr := json.Unmarshal(b, &presp); err != nil {
+		err = errors.New("error while unmarshalling the provider's response: " + jsonErr.Error())
+		return
+	}
+
+	if presp.ResponseStatus != "Success" {
+		err = errors.New("provider's response status code is not `Success`: " + presp.ResponseStatus)
+		return
+	}
+
+	if len(presp.Data) < 1 {
+		err = errors.New("no data in provider's response")
+		return
+	}
+
+	output = HistoricalPrice{
+		RequestID:          input.RequestID,
+		CryptocurrencyName: input.CryptocurrencyName,
+		FiatName:           input.FiatName,
+		MonthYear:          input.MonthYear,
+	}
+	output.PriceHighest = presp.Data[0].High
+	output.PriceHighest = presp.Data[0].Low
+
 	return
 }
