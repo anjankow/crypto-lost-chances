@@ -14,14 +14,18 @@ const (
 	providerURL = "https://min-api.cryptocompare.com/data/v2/histoday"
 )
 
-type priceData struct {
+type singlePriceData struct {
 	High float64 `json:"high"`
 	Low  float64 `json:"low"`
 }
 
+type priceData struct {
+	Data []singlePriceData `json:"Data"`
+}
+
 type providerRsp struct {
-	ResponseStatus string      `json:"Response"`
-	Data           []priceData `json:"Data"`
+	ResponseStatus string    `json:"Response"`
+	Data           priceData `json:"Data"`
 }
 
 func checkPrice(input HistoricalPrice) (output HistoricalPrice, err error) {
@@ -75,8 +79,8 @@ func checkPrice(input HistoricalPrice) (output HistoricalPrice, err error) {
 		return
 	}
 
-	if len(presp.Data) < 1 {
-		err = errors.New("no data in provider's response")
+	if len(presp.Data.Data) < 1 {
+		err = errors.New("no data in the provider's response")
 		return
 	}
 
@@ -86,8 +90,8 @@ func checkPrice(input HistoricalPrice) (output HistoricalPrice, err error) {
 		FiatName:           input.FiatName,
 		MonthYear:          input.MonthYear,
 	}
-	output.PriceHighest = presp.Data[0].High
-	output.PriceHighest = presp.Data[0].Low
+	output.PriceHighest = presp.Data.Data[0].High
+	output.PriceLowest = presp.Data.Data[0].Low
 
 	return
 }

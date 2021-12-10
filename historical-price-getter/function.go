@@ -33,6 +33,7 @@ func GetHistoricalPrice(w http.ResponseWriter, r *http.Request) {
 	historicalPrice, err := checkPrice(input)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	message := fmt.Sprintln(historicalPrice.CryptocurrencyName, "/", historicalPrice.FiatName, " lowest: ", historicalPrice.PriceLowest, ", highest: ", historicalPrice.PriceHighest)
