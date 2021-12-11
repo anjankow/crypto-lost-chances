@@ -77,7 +77,7 @@ func SavePrice(ctx context.Context, message PubSubMessage) error {
 	defer client.Close()
 
 	selectQ := `
-	SELECT 
+	SELECT
 		cryptocurrency,
 		fiat,
 		monthYear
@@ -98,22 +98,24 @@ func SavePrice(ctx context.Context, message PubSubMessage) error {
 	}
 	iter := client.Single().Query(ctx, stmt)
 	defer iter.Stop()
-	for {
-		row, err := iter.Next()
-		fmt.Println("got next iterator")
-		if err == iterator.Done {
-			fmt.Println("iterator done")
-			break
-		}
-		if err != nil {
-			fmt.Println("iterator done")
-			return err
-		}
-		var histRead HistoricalPrice
-		if err := row.Columns(nil, &histRead.CryptocurrencyName, &histRead.FiatName, &histRead.MonthYear); err != nil {
+
+	row, err := iter.Next()
+	// if there is no such record yet, iterator will be done immediately
+	// otherwise, the record exists already and shall be not written again
+	if err == nil {
+		fmt.Println("record exists in the db already")
+
+		var priceRead HistoricalPrice
+		if err := row.Columns(&priceRead.CryptocurrencyName, &priceRead.FiatName, &priceRead.MonthYear); err != nil {
 			fmt.Println("scanning error: ", err.Error())
 		}
-		fmt.Println("hist price: ", histRead.CryptocurrencyName, histRead.FiatName, histRead.MonthYear)
+		fmt.Println("hist price: ", priceRead.CryptocurrencyName, priceRead.FiatName, priceRead.MonthYear)
+
+		return nil
+	}
+
+	if err != iterator.Done {
+		fmt.Println("error when getting next query result: " + err.Error())
 	}
 
 	fmt.Println("now inserting")
@@ -129,11 +131,13 @@ func SavePrice(ctx context.Context, message PubSubMessage) error {
 	) VALUES (
 		@uuid, @cryptocurrency, @fiat, @monthYear, @priceHighest, @priceLowest
 	)`
+
+	id := uuid.New()
 	_, err = client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		stmt := spanner.Statement{
 			SQL: query,
 			Params: map[string]interface{}{
-				"uuid":           uuid.New().String(),
+				"uuid":           id.String(),
 				"cryptocurrency": h.CryptocurrencyName,
 				"fiat":           h.FiatName,
 				"monthYear":      h.MonthYear,
