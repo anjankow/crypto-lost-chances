@@ -37,10 +37,6 @@ type HistoricalPrice struct {
 	PriceLowest        float64   `json:"priceLowest"`
 }
 
-func formatDate(d time.Time) string {
-	return d.Format("2017-09-07")
-}
-
 func (h HistoricalPrice) Validate() (err error) {
 
 	if h.CryptocurrencyName == "" {
@@ -97,7 +93,7 @@ func SavePrice(ctx context.Context, message PubSubMessage) error {
 		Params: map[string]interface{}{
 			"cryptocurrency": h.CryptocurrencyName,
 			"fiat":           h.FiatName,
-			"monthYear":      formatDate(h.MonthYear),
+			"monthYear":      h.MonthYear,
 		},
 	}
 	iter := client.Single().Query(ctx, stmt)
@@ -115,10 +111,12 @@ func SavePrice(ctx context.Context, message PubSubMessage) error {
 		}
 		var histRead HistoricalPrice
 		if err := row.Columns(nil, &histRead.CryptocurrencyName, &histRead.FiatName, &histRead.MonthYear); err != nil {
-			return err
+			fmt.Println("scanning error: ", err.Error())
 		}
 		fmt.Println("hist price: ", histRead.CryptocurrencyName, histRead.FiatName, histRead.MonthYear)
 	}
+
+	fmt.Println("now inserting")
 
 	query := `
 	INSERT INTO prices(
@@ -135,10 +133,10 @@ func SavePrice(ctx context.Context, message PubSubMessage) error {
 		stmt := spanner.Statement{
 			SQL: query,
 			Params: map[string]interface{}{
-				"uuid":           uuid.New(),
+				"uuid":           uuid.New().String(),
 				"cryptocurrency": h.CryptocurrencyName,
 				"fiat":           h.FiatName,
-				"monthYear":      formatDate(h.MonthYear),
+				"monthYear":      h.MonthYear,
 				"priceHighest":   h.PriceHighest,
 				"priceLowest":    h.PriceLowest,
 			},
