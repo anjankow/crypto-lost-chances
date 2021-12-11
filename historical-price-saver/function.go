@@ -4,17 +4,19 @@ package p
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	"go.uber.org/multierr"
 )
 
 const (
 	user                   = "root"
 	password               = ""
 	instanceConnectionName = "crypto-lost-chances:europe-central2:db"
-	dbName                 = "test"
+	dbName                 = "internal"
 	socketDir              = "/cloudsql"
 )
 
@@ -31,8 +33,33 @@ type HistoricalPrice struct {
 	PriceLowest        float64   `json:"priceLowest"`
 }
 
+func (h HistoricalPrice) Validate() (err error) {
+
+	if h.CryptocurrencyName == "" {
+		err = multierr.Append(err, errors.New("missing cryptocurrency name"))
+	}
+	if h.FiatName == "" {
+		err = multierr.Append(err, errors.New("missing fiat name"))
+	}
+	if h.MonthYear.IsZero() {
+		err = multierr.Append(err, errors.New("missing date"))
+	}
+	if h.PriceHighest == 0 && h.PriceLowest == 0 {
+		err = multierr.Append(err, errors.New("missing prices lowest and highest"))
+	}
+
+	return err
+}
+
 func SavePrice(ctx context.Context, m PubSubMessage) error {
 
+	h := m.Price
+	if err := h.Validate(); err != nil {
+		fmt.Println("validation failed: " + err.Error())
+		return err
+	}
+
+	fmt.Println(m.RequestID, m.Price, m.Price.MonthYear)
 	dbURI := fmt.Sprintf("%s:%s@unix(/%s/%s)/%s?parseTime=true", user, password, socketDir, instanceConnectionName, dbName)
 
 	// dbPool is the pool of database connections.
@@ -51,7 +78,6 @@ func SavePrice(ctx context.Context, m PubSubMessage) error {
 		monthYear = ?;
 	`
 
-	h := m.Price
 	row := dbPool.QueryRowContext(ctx, selectQ, h.FiatName, h.CryptocurrencyName, h.MonthYear)
 	result := HistoricalPrice{}
 	if err := row.Scan(&result); err != sql.ErrNoRows {
@@ -74,7 +100,7 @@ func SavePrice(ctx context.Context, m PubSubMessage) error {
 		?, ?, ?, ?, ?
 	)`
 
-	_, err = dbPool.ExecContext(ctx, query, h.FiatName, h.CryptocurrencyName, h.MonthYear)
+	_, err = dbPool.ExecContext(ctx, query, h.FiatName, h.CryptocurrencyName, h.MonthYear, h.PriceHighest, h.PriceLowest)
 	if err != nil {
 		fmt.Println("error when inserting a price: " + err.Error())
 		return err
