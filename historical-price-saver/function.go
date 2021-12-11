@@ -109,7 +109,7 @@ func SavePrice(ctx context.Context, message PubSubMessage) error {
 		if err := row.Columns(&priceRead.CryptocurrencyName, &priceRead.FiatName, &priceRead.MonthYear); err != nil {
 			fmt.Println("scanning error: ", err.Error())
 		}
-		fmt.Println("hist price: ", priceRead.CryptocurrencyName, priceRead.FiatName, priceRead.MonthYear)
+		fmt.Println("price: ", priceRead.CryptocurrencyName, priceRead.FiatName, priceRead.MonthYear, priceRead.PriceHighest, priceRead.PriceLowest)
 
 		return nil
 	}
@@ -118,7 +118,7 @@ func SavePrice(ctx context.Context, message PubSubMessage) error {
 		fmt.Println("error when getting next query result: " + err.Error())
 	}
 
-	fmt.Println("now inserting")
+	fmt.Println("inserting")
 
 	query := `
 	INSERT INTO prices(
@@ -156,8 +156,6 @@ func SavePrice(ctx context.Context, message PubSubMessage) error {
 		fmt.Println("saved, request id: ", m.RequestID, ", price: ", m.Price)
 		return err
 	})
-
-	fmt.Println("return")
 
 	return err
 }
