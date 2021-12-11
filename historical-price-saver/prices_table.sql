@@ -1,7 +1,8 @@
 CREATE TABLE prices(
-    cryptocurrency VARCHAR(20),
-    fiat  VARCHAR(20),
+    id STRING(255),
+    cryptocurrency STRING(20),
+    fiat  STRING(20),
     monthYear DATE,
-    priceHighest FLOAT,
-    priceLowest FLOAT
+    priceHighest FLOAT64,
+    priceLowest FLOAT64
 );

@@ -3,22 +3,19 @@ package p
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	"cloud.google.com/go/spanner"
+	"github.com/google/uuid"
 	"go.uber.org/multierr"
+	"google.golang.org/api/iterator"
 )
 
 const (
-	user                   = "root"
-	password               = ""
-	instanceConnectionName = "crypto-lost-chances:europe-central2:db"
-	dbName                 = "internal"
-	socketDir              = "/cloudsql"
+	dbName = "db"
 )
 
 type PubSubMessage struct {
@@ -36,6 +33,10 @@ type HistoricalPrice struct {
 	MonthYear          time.Time `json:"monthYear"`
 	PriceHighest       float64   `json:"priceHighest"`
 	PriceLowest        float64   `json:"priceLowest"`
+}
+
+func formatDate(d time.Time) string {
+	return d.Format("2017-09-07")
 }
 
 func (h HistoricalPrice) Validate() (err error) {
@@ -70,50 +71,88 @@ func SavePrice(ctx context.Context, message PubSubMessage) error {
 		return errors.New("validation failed: " + err.Error())
 	}
 
-	dbURI := fmt.Sprintf("%s:%s@unix(/%s/%s)/%s?parseTime=true", user, password, socketDir, instanceConnectionName, dbName)
-
-	// dbPool is the pool of database connections.
-	dbPool, err := sql.Open("mysql", dbURI)
+	client, err := spanner.NewClient(ctx, dbName)
 	if err != nil {
-		return errors.New("error in db connection: " + err.Error())
+		return err
 	}
+	defer client.Close()
 
 	selectQ := `
-	SELECT * FROM prices WHERE
-		cryptocurrency = ?
+	SELECT 
+		cryptocurrency,
+		fiat,
+		monthYear
+		FROM prices WHERE
+		cryptocurrency = @cryptocurrency
 		AND
-		fiat = ?
+		fiat = @fiat
 		AND
-		monthYear = ?;
+		monthYear = @monthYear
 	`
-
-	rows, err := dbPool.QueryContext(ctx, selectQ, h.CryptocurrencyName, h.FiatName, h.MonthYear.Format("2017-09-07"))
-	if err != nil {
-		return errors.New("error when querying the db: " + err.Error())
+	stmt := spanner.Statement{
+		SQL: selectQ,
+		Params: map[string]interface{}{
+			"cryptocurrency": h.CryptocurrencyName,
+			"fiat":           h.FiatName,
+			"monthYear":      formatDate(h.MonthYear),
+		},
 	}
-	if rows.Next() {
-		fmt.Println("price already exists in the db: ", h.CryptocurrencyName, "/", h.FiatName, " ", h.MonthYear.Format("2017-09-07"))
-		return nil
+	iter := client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+	for {
+		row, err := iter.Next()
+		fmt.Println("got next iterator")
+		if err == iterator.Done {
+			fmt.Println("iterator done")
+			break
+		}
+		if err != nil {
+			fmt.Println("iterator done")
+			return err
+		}
+		var histRead HistoricalPrice
+		if err := row.Columns(nil, &histRead.CryptocurrencyName, &histRead.FiatName, &histRead.MonthYear); err != nil {
+			return err
+		}
+		fmt.Println("hist price: ", histRead.CryptocurrencyName, histRead.FiatName, histRead.MonthYear)
 	}
 
 	query := `
 	INSERT INTO prices(
+		id,
 		cryptocurrency,
 		fiat,
 		monthYear,
 		priceHighest,
 		priceLowest
 	) VALUES (
-		?, ?, ?, ?, ?
+		@uuid, @cryptocurrency, @fiat, @monthYear, @priceHighest, @priceLowest
 	)`
+	_, err = client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		stmt := spanner.Statement{
+			SQL: query,
+			Params: map[string]interface{}{
+				"uuid":           uuid.New(),
+				"cryptocurrency": h.CryptocurrencyName,
+				"fiat":           h.FiatName,
+				"monthYear":      formatDate(h.MonthYear),
+				"priceHighest":   h.PriceHighest,
+				"priceLowest":    h.PriceLowest,
+			},
+		}
+		rowCount, err := txn.Update(ctx, stmt)
+		if err != nil {
+			return err
+		}
+		if rowCount != 1 {
+			return errors.New("one record should be inserted, executed row count:" + fmt.Sprint(rowCount))
+		}
 
-	_, err = dbPool.ExecContext(ctx, query, h.CryptocurrencyName, h.FiatName, h.MonthYear, h.PriceHighest, h.PriceLowest)
-	if err != nil {
+		fmt.Println("saved, request id: ", m.RequestID, ", price: ", m.Price)
+		return err
+	})
 
-		return errors.New("error when inserting a price: " + err.Error())
-	}
+	fmt.Println("return")
 
-	fmt.Println("saved, request id: ", m.RequestID, ", price: ", m.Price)
-
-	return nil
+	return err
 }
