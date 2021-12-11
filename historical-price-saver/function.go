@@ -15,7 +15,9 @@ import (
 )
 
 const (
-	dbName = "db"
+	dbName      = "db"
+	dbInstance  = "internal"
+	projectName = "crypto-lost-chances"
 )
 
 type PubSubMessage struct {
@@ -71,7 +73,8 @@ func SavePrice(ctx context.Context, message PubSubMessage) error {
 		return errors.New("validation failed: " + err.Error())
 	}
 
-	client, err := spanner.NewClient(ctx, dbName)
+	dsn := fmt.Sprint("projects/", projectName, "/instances/", dbInstance, "/databases/", dbName)
+	client, err := spanner.NewClient(ctx, dsn)
 	if err != nil {
 		return err
 	}
