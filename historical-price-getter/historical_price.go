@@ -9,6 +9,7 @@ import (
 )
 
 var (
+	// arbitrary limit - one month after ETH was released
 	pastLimit = time.Date(2015, time.August, 1, 0, 0, 0, 0, time.Local)
 )
 

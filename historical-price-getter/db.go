@@ -52,8 +52,8 @@ func getFromDB(ctx context.Context, h HistoricalPrice) (found bool, out Historic
 	iter := client.Single().Query(ctx, stmt)
 	defer iter.Stop()
 
-	row, err := iter.Next()
 	// we need just one record
+	row, err := iter.Next()
 	if err == iterator.Done {
 		fmt.Println("price doesn't exist in the db yet")
 		return

@@ -40,8 +40,10 @@ func GetHistoricalPrice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// first check if the price already exists in the DB
 	found, price := getFromDB(r.Context(), input.Price)
 	if !found {
+		// only then get the price from the provider
 		h, err := checkPrice(input.Price)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
