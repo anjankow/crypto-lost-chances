@@ -59,7 +59,7 @@ func (h HistoricalPrice) Validate() (err error) {
 func SavePrice(ctx context.Context, message PubSubMessage) error {
 
 	var m HistoricalPriceMessage
-	if err := json.Unmarshal(message.Data, &message); err != nil {
+	if err := json.Unmarshal(message.Data, &m); err != nil {
 		return errors.New("unmarshalling the message failed: " + err.Error())
 	}
 
@@ -87,15 +87,13 @@ func SavePrice(ctx context.Context, message PubSubMessage) error {
 		monthYear = ?;
 	`
 
-	row := dbPool.QueryRowContext(ctx, selectQ, h.FiatName, h.CryptocurrencyName, h.MonthYear)
-	result := HistoricalPrice{}
-	if err := row.Scan(&result); err != sql.ErrNoRows {
-		if err == nil {
-			fmt.Println("price already exists in the db: ", h.CryptocurrencyName, "/", h.FiatName, " ", h.MonthYear)
-			return nil
-		}
-
+	rows, err := dbPool.QueryContext(ctx, selectQ, h.CryptocurrencyName, h.FiatName, h.MonthYear.Format("2017-09-07"))
+	if err != nil {
 		return errors.New("error when querying the db: " + err.Error())
+	}
+	if rows.Next() {
+		fmt.Println("price already exists in the db: ", h.CryptocurrencyName, "/", h.FiatName, " ", h.MonthYear.Format("2017-09-07"))
+		return nil
 	}
 
 	query := `
@@ -109,11 +107,13 @@ func SavePrice(ctx context.Context, message PubSubMessage) error {
 		?, ?, ?, ?, ?
 	)`
 
-	_, err = dbPool.ExecContext(ctx, query, h.FiatName, h.CryptocurrencyName, h.MonthYear, h.PriceHighest, h.PriceLowest)
+	_, err = dbPool.ExecContext(ctx, query, h.CryptocurrencyName, h.FiatName, h.MonthYear, h.PriceHighest, h.PriceLowest)
 	if err != nil {
 
 		return errors.New("error when inserting a price: " + err.Error())
 	}
+
+	fmt.Println("saved, request id: ", m.RequestID, ", price: ", m.Price)
 
 	return nil
 }
