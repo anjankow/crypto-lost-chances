@@ -3,58 +3,74 @@ package p
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 
+	"cloud.google.com/go/spanner"
 	_ "github.com/go-sql-driver/mysql"
+	"google.golang.org/api/iterator"
 )
 
 const (
-	user                   = "root"
-	password               = ""
-	instanceConnectionName = "crypto-lost-chances:europe-central2:db"
-	dbName                 = "test"
-	socketDir              = "/cloudsql"
+	dbName      = "db"
+	dbInstance  = "internal"
+	projectName = "crypto-lost-chances"
 )
 
 func getFromDB(ctx context.Context, h HistoricalPrice) (found bool, out HistoricalPrice) {
-
 	found = false
-	dbURI := fmt.Sprintf("%s:%s@unix(/%s/%s)/%s?parseTime=true", user, password, socketDir, instanceConnectionName, dbName)
 
-	// dbPool is the pool of database connections.
-	dbPool, err := sql.Open("mysql", dbURI)
+	dsn := fmt.Sprint("projects/", projectName, "/instances/", dbInstance, "/databases/", dbName)
+	client, err := spanner.NewClient(ctx, dsn)
 	if err != nil {
-		fmt.Println("error in db connection: " + err.Error())
+		fmt.Println("error when connecting to the db: ", err.Error())
 		return
 	}
+	defer client.Close()
 
-	query := `
-	SELECT * FROM prices 
-	WHERE
-	fiat = ?
-	AND
-	cryptocurrency = ?
-	AND
-	date = ?
+	selectQ := `
+	SELECT
+		cryptocurrency,
+		fiat,
+		monthYear,
+		priceHighest,
+		priceLowest
+		FROM prices WHERE
+		cryptocurrency = @cryptocurrency
+		AND
+		fiat = @fiat
+		AND
+		monthYear = @monthYear
 	`
-	rows, err := dbPool.QueryContext(ctx, query, h.FiatName, h.CryptocurrencyName, h.MonthYear)
+	stmt := spanner.Statement{
+		SQL: selectQ,
+		Params: map[string]interface{}{
+			"cryptocurrency": h.CryptocurrencyName,
+			"fiat":           h.FiatName,
+			"monthYear":      h.MonthYear,
+		},
+	}
+	iter := client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	row, err := iter.Next()
+	// we need just one record
+	if err == iterator.Done {
+		fmt.Println("price doesn't exist in the db yet")
+		return
+	}
 	if err != nil {
-		fmt.Println("error when executing the query: " + err.Error())
+		fmt.Println("error when getting next result: ", err.Error())
 		return
 	}
 
-	var prices []HistoricalPrice
-	err = rows.Scan(prices)
-	if err != nil {
-		fmt.Println("row scan failed: " + err.Error())
-		return
-	}
+	fmt.Println("price found in the db")
 
-	if len(prices) == 0 {
-		fmt.Println("no prices found in the db")
-		return
+	if err := row.Columns(&out.CryptocurrencyName, &out.FiatName, &out.MonthYear,
+		&out.PriceHighest, &out.PriceLowest); err != nil {
+		fmt.Println("scanning error: ", err.Error())
 	}
+	fmt.Println("price: ", out.CryptocurrencyName, out.FiatName, out.MonthYear, out.PriceHighest, out.PriceLowest)
 
-	return true, prices[0]
+	return true, out
+
 }
