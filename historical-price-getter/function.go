@@ -9,14 +9,14 @@ import (
 	"net/http"
 )
 
-type requestBody struct {
-	RequestID    string          `json:"requestID"`
-	PriceRequest HistoricalPrice `json:"priceRequest"`
+type HistoricalPriceMessage struct {
+	RequestID string          `json:"requestID"`
+	Price     HistoricalPrice `json:"historicalPrice"`
 }
 
 func GetHistoricalPrice(w http.ResponseWriter, r *http.Request) {
 
-	var input requestBody
+	var input HistoricalPriceMessage
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		switch err {
 		case io.EOF:
@@ -35,14 +35,14 @@ func GetHistoricalPrice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := input.PriceRequest.Validate(); err != nil {
+	if err := input.Price.Validate(); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	found, price := getFromDB(r.Context(), input.PriceRequest)
+	found, price := getFromDB(r.Context(), input.Price)
 	if !found {
-		h, err := checkPrice(input.PriceRequest)
+		h, err := checkPrice(input.Price)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -51,6 +51,7 @@ func GetHistoricalPrice(w http.ResponseWriter, r *http.Request) {
 		price = h
 	}
 
-	message := fmt.Sprintln(price.CryptocurrencyName, "/", price.FiatName, " lowest: ", price.PriceLowest, ", highest: ", price.PriceHighest)
-	fmt.Fprint(w, message)
+	fmt.Println(price.CryptocurrencyName, "/", price.FiatName, " lowest: ", price.PriceLowest, ", highest: ", price.PriceHighest)
+
+	writeResult(r.Context(), HistoricalPriceMessage{RequestID: input.RequestID, Price: price})
 }

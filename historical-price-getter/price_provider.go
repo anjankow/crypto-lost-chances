@@ -85,7 +85,6 @@ func checkPrice(input HistoricalPrice) (output HistoricalPrice, err error) {
 	}
 
 	output = HistoricalPrice{
-		RequestID:          input.RequestID,
 		CryptocurrencyName: input.CryptocurrencyName,
 		FiatName:           input.FiatName,
 		MonthYear:          input.MonthYear,
