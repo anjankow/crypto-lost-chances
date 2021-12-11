@@ -4,6 +4,7 @@ package p
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -21,6 +22,10 @@ const (
 )
 
 type PubSubMessage struct {
+	Data []byte `json:"data"`
+}
+
+type HistoricalPriceMessage struct {
 	RequestID string          `json:"requestID"`
 	Price     HistoricalPrice `json:"historicalPrice"`
 }
@@ -51,22 +56,26 @@ func (h HistoricalPrice) Validate() (err error) {
 	return err
 }
 
-func SavePrice(ctx context.Context, m PubSubMessage) error {
+func SavePrice(ctx context.Context, message PubSubMessage) error {
+
+	var m HistoricalPriceMessage
+	if err := json.Unmarshal(message.Data, &message); err != nil {
+		return errors.New("unmarshalling the message failed: " + err.Error())
+	}
+
+	fmt.Println("saving, request id: ", m.RequestID, ", price: ", m.Price)
 
 	h := m.Price
 	if err := h.Validate(); err != nil {
-		fmt.Println("validation failed: " + err.Error())
-		return err
+		return errors.New("validation failed: " + err.Error())
 	}
 
-	fmt.Println(m.RequestID, m.Price, m.Price.MonthYear)
 	dbURI := fmt.Sprintf("%s:%s@unix(/%s/%s)/%s?parseTime=true", user, password, socketDir, instanceConnectionName, dbName)
 
 	// dbPool is the pool of database connections.
 	dbPool, err := sql.Open("mysql", dbURI)
 	if err != nil {
-		fmt.Println("error in db connection: " + err.Error())
-		return err
+		return errors.New("error in db connection: " + err.Error())
 	}
 
 	selectQ := `
@@ -85,8 +94,8 @@ func SavePrice(ctx context.Context, m PubSubMessage) error {
 			fmt.Println("price already exists in the db: ", h.CryptocurrencyName, "/", h.FiatName, " ", h.MonthYear)
 			return nil
 		}
-		fmt.Println("error when querying the db: " + err.Error())
-		return err
+
+		return errors.New("error when querying the db: " + err.Error())
 	}
 
 	query := `
@@ -102,8 +111,8 @@ func SavePrice(ctx context.Context, m PubSubMessage) error {
 
 	_, err = dbPool.ExecContext(ctx, query, h.FiatName, h.CryptocurrencyName, h.MonthYear, h.PriceHighest, h.PriceLowest)
 	if err != nil {
-		fmt.Println("error when inserting a price: " + err.Error())
-		return err
+
+		return errors.New("error when inserting a price: " + err.Error())
 	}
 
 	return nil
