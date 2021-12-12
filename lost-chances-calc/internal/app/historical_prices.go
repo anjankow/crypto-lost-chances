@@ -8,7 +8,7 @@ import (
 
 type getHistoricalPricesFunc func(ctx context.Context) (prices []domain.HistoricalPrice, err error)
 
-func (a App) requestHistoricalPrices(ctx context.Context, requestID string, progress *int, fiatName string, monthYear time.Time) (getterFunc getHistoricalPricesFunc, err error) {
+func (a App) requestHistoricalPrices(ctx context.Context, requestID string, progress *int, fiatName domain.Fiat, monthYear time.Time) (getterFunc getHistoricalPricesFunc, err error) {
 
 	for _, currency := range domain.Cryptocurrencies {
 		// call to fetch dispaches a task and subscribes to the result queue

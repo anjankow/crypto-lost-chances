@@ -2,6 +2,6 @@ package domain
 
 type Fiat string
 
-const Euro = "EUR"
+const Euro Fiat = "EUR"
 
 var Fiats []Fiat = []Fiat{Euro}

@@ -15,7 +15,7 @@ const (
 	priceFetcherResultsTimeout = 5 * time.Second
 	progressMax                = 100
 	// support only euro for now
-	fiatName = domain.Euro
+	supportedFiatName = domain.Euro
 )
 
 var (
@@ -65,7 +65,7 @@ func (a App) Calculate(ctx context.Context, requestID string, input CalcInput) (
 	a.publishProgress(ctx, &progress, requestID)
 
 	// request to dispatch the getter tasks and subscribe for the historical price messages
-	getHistoricalPrices, err := a.requestHistoricalPrices(ctx, requestID, &progress, fiatName, input.MonthYear)
+	getHistoricalPrices, err := a.requestHistoricalPrices(ctx, requestID, &progress, supportedFiatName, input.MonthYear)
 	if err != nil {
 		a.Logger.Error("requesting the historical prices failed: "+err.Error(), zap.String("requestID", requestID))
 	}
@@ -88,7 +88,7 @@ func (a App) Calculate(ctx context.Context, requestID string, input CalcInput) (
 	a.publishProgress(ctx, &progress, requestID)
 
 	investment := domain.Investment{
-		FiatName: fiatName,
+		FiatName: supportedFiatName,
 		Amount:   input.Amount,
 	}
 	lostChance, err := domain.CalculateLostChance(investment, historicalPrices, currentPrices)
