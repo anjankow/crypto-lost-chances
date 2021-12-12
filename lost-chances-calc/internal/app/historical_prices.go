@@ -18,7 +18,7 @@ func (a App) requestHistoricalPrices(ctx context.Context, requestID string, prog
 	}
 
 	getterFunc = func(ctx context.Context) (prices []domain.HistoricalPrice, err error) {
-		prices, err = a.priceFetcher.CollectHistoricalPrices(ctx, requestID)
+		prices, err = a.priceFetcher.CollectHistoricalPrices(ctx, requestID, len(domain.Cryptocurrencies))
 
 		if err != nil {
 			return
