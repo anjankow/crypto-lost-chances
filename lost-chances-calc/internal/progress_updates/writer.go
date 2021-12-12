@@ -71,7 +71,7 @@ func (w Writer) PublishProgress(ctx context.Context, requestID string, progress 
 	}
 
 	if progress > maxProgress || progress < minProgress {
-		return fmt.Errorf("invalid progress value, shall be in range (0,100): ", progress)
+		return fmt.Errorf("invalid progress value, shall be in range (0,100): %v", progress)
 	}
 
 	msgBody := progressMessage{

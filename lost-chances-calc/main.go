@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"lost-chances-calc/internal/app"
+	pricefetcher "lost-chances-calc/internal/price_fetcher"
 	progressupdates "lost-chances-calc/internal/progress_updates"
 	"lost-chances-calc/internal/server"
 	"time"
@@ -24,14 +25,20 @@ func main() {
 	logger.Info("Service started")
 
 	writer := progressupdates.NewWriter(logger)
-	close, err := writer.Init(context.Background())
-	defer close()
-
+	writerCloser, err := writer.Init(context.Background())
 	if err != nil {
 		logger.Fatal("failed to initialize the pubsub writer: " + err.Error())
 	}
+	defer writerCloser()
 
-	service, err := app.NewApp(logger, &writer)
+	fetcher := pricefetcher.NewFetcher(logger)
+	fetcherCloser, err := fetcher.Init(context.Background())
+	if err != nil {
+		logger.Fatal("failed to initialize the pubsub writer: " + err.Error())
+	}
+	defer fetcherCloser()
+
+	service, err := app.NewApp(logger, &writer, &fetcher)
 	if err != nil {
 		logger.Fatal("service creation failed: " + err.Error())
 		return

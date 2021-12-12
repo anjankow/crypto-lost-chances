@@ -6,7 +6,6 @@ import (
 	"lost-chances-calc/internal/domain"
 	pricefetcher "lost-chances-calc/internal/price_fetcher"
 	progressupdates "lost-chances-calc/internal/progress_updates"
-	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -32,9 +31,7 @@ var (
 type App struct {
 	Logger         *zap.Logger
 	progressWriter *progressupdates.Writer
-	priceFetcher   pricefetcher.PriceFetcher
-
-	wg *sync.WaitGroup
+	priceFetcher   *pricefetcher.PriceFetcher
 }
 
 type CalcInput struct {
@@ -47,7 +44,7 @@ type Results struct {
 	Income         string `json:"income"`
 }
 
-func NewApp(l *zap.Logger, progressWriter *progressupdates.Writer) (app App, err error) {
+func NewApp(l *zap.Logger, progressWriter *progressupdates.Writer, fetcher *pricefetcher.PriceFetcher) (app App, err error) {
 	if progressWriter == nil {
 		err = errors.New("progress writer is nil")
 		return
@@ -56,7 +53,7 @@ func NewApp(l *zap.Logger, progressWriter *progressupdates.Writer) (app App, err
 	app = App{
 		Logger:         l,
 		progressWriter: progressWriter,
-		wg:             &sync.WaitGroup{},
+		priceFetcher:   fetcher,
 	}
 	return
 }
@@ -73,7 +70,7 @@ func (a App) Calculate(ctx context.Context, requestID string, input CalcInput) (
 		a.Logger.Error("requesting the historical prices failed: "+err.Error(), zap.String("requestID", requestID))
 	}
 
-	currentPrices, err := a.getCurrentPrices(ctx, requestID, &progress, fiatName)
+	currentPrices, err := a.getCurrentPrices(ctx, requestID, &progress)
 	if err != nil {
 		a.Logger.Error("getting the current prices failed: "+err.Error(), zap.String("requestID", requestID))
 		return nil, err
