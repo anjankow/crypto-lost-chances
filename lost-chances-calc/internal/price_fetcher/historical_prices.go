@@ -21,7 +21,7 @@ func (p *PriceFetcher) FetchHistoricalPrice(ctx context.Context, requestID strin
 }
 
 func (p *PriceFetcher) CollectHistoricalPrices(ctx context.Context, requestID string, expectedNum int) ([]domain.HistoricalPrice, error) {
-	prices := []domain.HistoricalPrice{}
+	var prices []domain.HistoricalPrice
 
 	for {
 		prices = p.getHistoricalPrices(requestID)
