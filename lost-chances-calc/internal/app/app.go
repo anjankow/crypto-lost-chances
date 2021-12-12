@@ -12,11 +12,15 @@ import (
 	"go.uber.org/zap"
 )
 
-const priceFetcherResultsTimeout = 5 * time.Second
-const progressMax = 100
+const (
+	priceFetcherResultsTimeout = 5 * time.Second
+	progressMax                = 100
+	// support only euro for now
+	fiatName = domain.Euro
+)
 
 var (
-	progressSteps = 2*len(domain.Currencies) + //for submitting fetcher tasks and fetching the results
+	progressSteps = 2*len(domain.Cryptocurrencies) + //for submitting fetcher tasks and fetching the results
 		1 + // for the initial progress added just because the operation reached this point
 		2 // for getting the current price and calculating the final result
 
@@ -34,7 +38,7 @@ type App struct {
 
 type CalcInput struct {
 	MonthYear time.Time
-	Amount    int
+	Amount    float64
 }
 
 type Results struct {
@@ -56,41 +60,44 @@ func NewApp(l *zap.Logger, progressWriter *progressupdates.Writer) (app App, err
 	return
 }
 
-func (a App) Calculate(ctx context.Context, requestID string, input CalcInput) error {
+func (a App) Calculate(ctx context.Context, requestID string, input CalcInput) (chance *domain.LostChance, err error) {
 
-	a.priceFetchListener.Register(ctx, requestID)
-	defer a.priceFetchListener.Unregister(requestID)
-
+	progress := progressStepLen
+	// if we are here, then some work has been done already - update the progress
 	a.progressWriter.PublishProgress(ctx, requestID, progress)
 
-	historicalPrices, err := a.getHistoricalPrices(ctx, requestID, &progress, domain.Euro, input.MonthYear) // currently only for euro
+	// request to dispatch the getter tasks and subscribe for the historical price messages
+	getHistoricalPrices, err := a.requestHistoricalPrices(ctx, requestID, &progress, fiatName, input.MonthYear)
 	if err != nil {
-		a.Logger.Error("getting the historical price failed: "+err.Error(), zap.String("requestID", requestID))
-		return err
+		a.Logger.Error("requesting the historical prices failed: "+err.Error(), zap.String("requestID", requestID))
 	}
 
-	currentPrices, err := a.getCurrentPrices(ctx, domain.Euro)
+	currentPrices, err := a.getCurrentPrices(ctx, requestID, &progress, fiatName)
 	if err != nil {
 		a.Logger.Error("getting the current prices failed: "+err.Error(), zap.String("requestID", requestID))
-		return err
+		return nil, err
 	}
 
-	return
+	cctx, cancel := context.WithTimeout(ctx, priceFetcherResultsTimeout)
+	defer cancel()
+	// getHistoricalPrices returns the results of historical price requests, which are possible to be collected
+	// at this point in time
+	historicalPrices, err := getHistoricalPrices(cctx)
+	if err != nil {
+		a.Logger.Error("getting the historical price failed: "+err.Error(), zap.String("requestID", requestID))
+		return nil, err
+	}
 
-	// a.wg.Add(1)
-	// go func() {
-	// 	defer a.wg.Done()
+	investment := domain.Investment{
+		FiatName: fiatName,
+		Amount:   input.Amount,
+	}
+	lostChance, err := domain.CalculateLostChance(investment, historicalPrices, currentPrices)
+	if err != nil {
+		return nil, err
+	}
 
-	// 	ctx := context.Background() // in not in the request context
-
-	// 	for i := 0; i <= 100; i += 20 {
-	// 		a.progressWriter.PublishProgress(ctx, requestID, i)
-	// 		time.Sleep(1 * time.Second)
-	// 	}
-
-	// }()
-
-	return nil
+	return &lostChance, nil
 }
 
 func (a App) publishProgress(ctx context.Context, currentProgress *int, requestID string) {

@@ -15,7 +15,7 @@ const (
 
 type calcRequestBody struct {
 	RequestID string    `json:"requestID"`
-	MonthYear time.Time `json:"monthYear`
+	MonthYear time.Time `json:"monthYear"`
 	Amount    int       `json:"amount"`
 }
 
@@ -40,11 +40,21 @@ func calculate(a *app.App, w http.ResponseWriter, r *http.Request) (int, error) 
 
 	input := app.CalcInput{
 		MonthYear: body.MonthYear,
-		Amount:    body.Amount,
+		Amount:    float64(body.Amount),
 	}
 
-	if err := a.StartCalculation(ctx, body.RequestID, input); err != nil {
+	lostChance, err := a.Calculate(ctx, body.RequestID, input)
+	if err != nil {
 		return http.StatusInternalServerError, errors.New("failed to start the calculation: " + err.Error())
+	}
+
+	resp, err := json.Marshal(lostChance)
+	if err != nil {
+		return http.StatusInternalServerError, errors.New("failed to marshal the response: " + err.Error())
+	}
+
+	if _, err := w.Write(resp); err != nil {
+		return http.StatusInternalServerError, errors.New("failed to write the response: " + err.Error())
 	}
 
 	return http.StatusOK, nil
