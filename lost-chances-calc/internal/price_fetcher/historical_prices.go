@@ -70,6 +70,11 @@ func (p *PriceFetcher) submitTask(ctx context.Context, message HistoricalPriceMe
 					Url:        priceGetterURL,
 					HttpMethod: taskspb.HttpMethod_POST,
 					Body:       body,
+					AuthorizationHeader: &taskspb.HttpRequest_OidcToken{
+						OidcToken: &taskspb.OidcToken{
+							ServiceAccountEmail: "crypto-lost-chances@appspot.gserviceaccount.com",
+						},
+					},
 				},
 			},
 		},

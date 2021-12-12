@@ -95,7 +95,7 @@ func (a App) Calculate(ctx context.Context, requestID string, input CalcInput) (
 	if err != nil {
 		return nil, err
 	}
-	a.publishOperationCompleted(ctx, requestID)
+	a.publishOperationCompleted(requestID)
 
 	return &lostChance, nil
 }
@@ -109,6 +109,6 @@ func (a App) publishProgress(ctx context.Context, currentProgress *int, requestI
 	a.progressWriter.PublishProgress(ctx, requestID, *currentProgress)
 }
 
-func (a App) publishOperationCompleted(ctx context.Context, requestID string) {
-	a.progressWriter.PublishProgress(ctx, requestID, progressMax)
+func (a App) publishOperationCompleted(requestID string) {
+	a.progressWriter.PublishProgress(context.Background(), requestID, progressMax)
 }

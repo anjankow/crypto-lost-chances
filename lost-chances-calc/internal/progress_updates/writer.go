@@ -60,6 +60,7 @@ func (w *Writer) Init(ctx context.Context) (closer func(), err error) {
 	}
 
 	w.topic = topic
+	w.topic.PublishSettings.CountThreshold = 1
 
 	return
 
