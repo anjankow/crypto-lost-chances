@@ -9,7 +9,7 @@ const (
 	Doge     Cryptocurrency = "DOGE"
 	Litecoin Cryptocurrency = "LTC"
 	Stellar  Cryptocurrency = "XLM"
-	Monero   Cryptocurrency = "XMR"
+	Xrp      Cryptocurrency = "XRP"
 )
 
-var Cryptocurrencies []Cryptocurrency = []Cryptocurrency{Bitcoin, Ethereum, Ada, Doge, Litecoin, Stellar, Monero}
+var Cryptocurrencies []Cryptocurrency = []Cryptocurrency{Bitcoin, Ethereum, Ada, Doge, Litecoin, Stellar, Xrp}

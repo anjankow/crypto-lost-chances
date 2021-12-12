@@ -27,7 +27,3 @@ func (p *PriceFetcher) FetchHistoricalPrice(ctx context.Context, requestID strin
 func (p *PriceFetcher) CollectHistoricalPrices(ctx context.Context, requestID string) ([]domain.HistoricalPrice, error) {
 	return []domain.HistoricalPrice{}, nil
 }
-
-func (p *PriceFetcher) FetchCurrentPrices(ctx context.Context, requestID string) (domain.CurrentPricesDict, error) {
-	return domain.CurrentPricesDict{}, nil
-}
