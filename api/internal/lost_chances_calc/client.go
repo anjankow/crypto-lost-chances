@@ -31,7 +31,7 @@ func NewClient(logger *zap.Logger) Client {
 	return Client{logger: logger}
 }
 
-func (c Client) StartCalculation(ctx context.Context, requestID string, monthYear time.Time, amount int) error {
+func (c Client) Calculate(ctx context.Context, requestID string, monthYear time.Time, amount int) (lostChance LostChance, err error) {
 
 	body := calcRequestBody{
 		RequestID: requestID,
@@ -41,21 +41,28 @@ func (c Client) StartCalculation(ctx context.Context, requestID string, monthYea
 
 	marshalledBody, err := json.Marshal(body)
 	if err != nil {
-		return errors.New("failed to marshal the body: " + err.Error())
+		err = errors.New("failed to marshal the body: " + err.Error())
+		return
 	}
+
 	resp, err := http.Post(url, contentType, bytes.NewBuffer(marshalledBody))
-
 	if err != nil {
-		return err
+		return
 	}
-
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return errors.New("response status is " + resp.Status)
-	} else {
-		c.logger.Debug("calculation request succeeded", zap.Any("status_code", resp.StatusCode), zap.String("requestID", requestID))
+		err = errors.New("response status is " + resp.Status)
+		return
+	}
+	c.logger.Debug("calculation request succeeded", zap.Any("status_code", resp.StatusCode), zap.String("requestID", requestID))
+
+	if err = json.NewDecoder(resp.Body).Decode(&lostChance); err != nil {
+		err = errors.New("failed to decode response: " + err.Error())
+		return
 	}
 
-	return nil
+	c.logger.Debug("lost chance received", zap.Any("lost_chance", lostChance), zap.String("requestID", requestID))
+
+	return
 }

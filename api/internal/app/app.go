@@ -40,11 +40,8 @@ func NewApp(l *zap.Logger, progressReader *progressupdates.Reader) (app App, err
 	return
 }
 
-func (a App) StartCalculation(ctx context.Context, requestID string, input UserInput) error {
-	if err := a.calcClient.StartCalculation(ctx, requestID, input.MonthYear, input.Amount); err != nil {
-		return errors.New("calculation request failed: " + err.Error())
-	}
-	return nil
+func (a App) StartCalculation(ctx context.Context, requestID string, input UserInput) (lostchancescalc.LostChance, error) {
+	return a.calcClient.Calculate(ctx, requestID, input.MonthYear, input.Amount)
 }
 
 // ListenProgress listens on the queue for the request progress
@@ -59,8 +56,4 @@ func (a App) ListenProgress(ctx context.Context, requestID string, callback func
 
 	// progress == 100, here possibly some other actions on this event
 
-}
-
-func (a App) GetResults(ctx context.Context, requestID string) (Results, error) {
-	return Results{Cryptocurrency: "ADA", Income: "€123"}, nil
 }
