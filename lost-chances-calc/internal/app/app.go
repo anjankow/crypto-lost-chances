@@ -20,9 +20,11 @@ const (
 )
 
 var (
-	progressSteps = 2*len(domain.Cryptocurrencies) + //for submitting fetcher tasks and fetching the results
+	progressSteps = len(domain.Cryptocurrencies) + //for submitting fetcher tasks
+		1 + // for getting the historical prices
+		1 + // for getting the current price
 		1 + // for the initial progress added just because the operation reached this point
-		2 // for getting the current price and calculating the final result
+		1 // for calculating the final result
 
 	progressStepLen = int(progressMax / progressSteps)
 )
@@ -62,9 +64,9 @@ func NewApp(l *zap.Logger, progressWriter *progressupdates.Writer) (app App, err
 
 func (a App) Calculate(ctx context.Context, requestID string, input CalcInput) (chance *domain.LostChance, err error) {
 
-	progress := progressStepLen
+	progress := 0
 	// if we are here, then some work has been done already - update the progress
-	a.progressWriter.PublishProgress(ctx, requestID, progress)
+	a.publishProgress(ctx, &progress, requestID)
 
 	// request to dispatch the getter tasks and subscribe for the historical price messages
 	getHistoricalPrices, err := a.requestHistoricalPrices(ctx, requestID, &progress, fiatName, input.MonthYear)
@@ -87,6 +89,7 @@ func (a App) Calculate(ctx context.Context, requestID string, input CalcInput) (
 		a.Logger.Error("getting the historical price failed: "+err.Error(), zap.String("requestID", requestID))
 		return nil, err
 	}
+	a.publishProgress(ctx, &progress, requestID)
 
 	investment := domain.Investment{
 		FiatName: fiatName,
@@ -96,19 +99,20 @@ func (a App) Calculate(ctx context.Context, requestID string, input CalcInput) (
 	if err != nil {
 		return nil, err
 	}
+	a.publishOperationCompleted(ctx, requestID)
 
 	return &lostChance, nil
 }
 
 func (a App) publishProgress(ctx context.Context, currentProgress *int, requestID string) {
 
-	*currentProgress += progressStepLen
-	if *currentProgress > progressMax {
-		*currentProgress = progressMax
-	}
-	if progressMax-*currentProgress < progressStepLen {
-		*currentProgress = progressMax
+	if *currentProgress+progressStepLen < progressMax {
+		*currentProgress += progressStepLen
 	}
 
 	a.progressWriter.PublishProgress(ctx, requestID, *currentProgress)
+}
+
+func (a App) publishOperationCompleted(ctx context.Context, requestID string) {
+	a.progressWriter.PublishProgress(ctx, requestID, progressMax)
 }
