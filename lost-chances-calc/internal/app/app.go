@@ -30,10 +30,9 @@ var (
 )
 
 type App struct {
-	Logger             *zap.Logger
-	progressWriter     *progressupdates.Writer
-	priceFetchListener *pricefetcher.Listener
-	priceFetcher       pricefetcher.PriceFetcher
+	Logger         *zap.Logger
+	progressWriter *progressupdates.Writer
+	priceFetcher   pricefetcher.PriceFetcher
 
 	wg *sync.WaitGroup
 }

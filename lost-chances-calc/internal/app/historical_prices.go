@@ -6,30 +6,28 @@ import (
 	"time"
 )
 
-func (a App) getHistoricalPrices(ctx context.Context, requestID string, progress *int, fiatName string, monthYear time.Time) (prices []domain.HistoricalPrice, err error) {
+type getHistoricalPricesFunc func(ctx context.Context) (prices []domain.HistoricalPrice, err error)
+
+func (a App) requestHistoricalPrices(ctx context.Context, requestID string, progress *int, fiatName string, monthYear time.Time) (getterFunc getHistoricalPricesFunc, err error) {
 
 	for _, currency := range domain.Cryptocurrencies {
+		// call to fetch dispaches a task and subscribes to the result queue
 		a.priceFetcher.FetchHistoricalPrice(ctx, requestID, currency, fiatName, monthYear)
 
-		*progress += progressStepLen
-		a.progressWriter.PublishProgress(ctx, requestID, *progress)
+		a.publishProgress(ctx, progress, requestID)
 	}
 
-	cctx, cancel := context.WithTimeout(ctx, priceFetcherResultsTimeout)
-	defer cancel()
+	getterFunc = func(ctx context.Context) (prices []domain.HistoricalPrice, err error) {
+		prices, err = a.priceFetcher.CollectHistoricalPrices(ctx, requestID)
 
-	for range domain.Cryptocurrencies {
-		price, err := a.priceFetchListener.GetPrice(cctx, requestID)
 		if err != nil {
-
-			return prices, err
+			return
 		}
+		a.publishProgress(ctx, progress, requestID)
 
-		*progress += progressStepLen
-		a.progressWriter.PublishProgress(ctx, requestID, *progress)
-
-		prices = append(prices, price)
+		return
 	}
 
-	return
+	return getterFunc, nil
+
 }
