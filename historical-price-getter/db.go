@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"cloud.google.com/go/spanner"
-	_ "github.com/go-sql-driver/mysql"
 	"google.golang.org/api/iterator"
 )
 
