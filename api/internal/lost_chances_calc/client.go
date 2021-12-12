@@ -19,7 +19,7 @@ var (
 
 type calcRequestBody struct {
 	RequestID string    `json:"requestID"`
-	MonthYear time.Time `json:"monthYear`
+	MonthYear time.Time `json:"monthYear"`
 	Amount    int       `json:"amount"`
 }
 

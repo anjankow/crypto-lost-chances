@@ -36,6 +36,7 @@ func main() {
 		logger.Fatal("service creation failed: " + err.Error())
 		return
 	}
+	defer service.Close()
 
 	// HTTP SERVER
 	ser := server.NewServer(logger, &service)

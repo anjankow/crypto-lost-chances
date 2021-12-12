@@ -54,6 +54,7 @@ func results(a *app.App, w http.ResponseWriter, r *http.Request) (status int, er
 
 	results, err := a.GetResults(r.Context(), requestID)
 	if err != nil {
+		a.Logger.Debug("calculation failed: "+err.Error(), zap.String("requestID", requestID))
 		return
 	}
 
