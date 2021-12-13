@@ -1,8 +1,8 @@
 runtime: go116
 
-service: api
+service: default
 
 env_variables:
   ENV: production
   PROJECT_ID: crypto-lost-chances
-  LOST_CHANCES_CALC_HOST:
+  LOST_CHANCES_CALC_HOST: https://lost-chances-calc-dot-crypto-lost-chances.appspot.com
