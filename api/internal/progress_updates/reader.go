@@ -14,13 +14,14 @@ const (
 	subscriptionName = "progressSub"
 	topicName        = "progress-update"
 
-	maxProgress = 100
+	channelLen = 100
 )
 
 type Reader struct {
 	logger *zap.Logger
 	sub    *pubsub.Subscription
-	// this approach could be improved - problem with writing to the closed channel on incoming garbage messages
+	// this approach could be improved - channels should be deleted when not needed anymore
+	// no need to keep them in memory after request
 	progressPerReq map[string]chan int
 	wg             sync.WaitGroup
 }
@@ -33,24 +34,20 @@ func NewReader(logger *zap.Logger) Reader {
 	}
 }
 
-func (r *Reader) SubscribeToProgressUpdates(requestID string) (channel chan int, finish func()) {
+func (r *Reader) Subscribe(requestID string) chan int {
 	_, ok := r.progressPerReq[requestID]
 	if !ok {
-		r.progressPerReq[requestID] = make(chan int, maxProgress)
+		r.progressPerReq[requestID] = make(chan int, channelLen)
 	}
 
-	channel = r.progressPerReq[requestID]
-	finish = func() {
-		delete(r.progressPerReq, requestID)
-	}
+	return r.progressPerReq[requestID]
 
-	return
 }
 
 func (r *Reader) Start(ctx context.Context) (closer func(), err error) {
 
 	cctx, ctxCancel := context.WithCancel(ctx)
-	sub, subCloser, err := subscribe(cctx)
+	sub, subCloser, err := subscribePubsub(cctx)
 	closer = func() {
 		subCloser()
 		ctxCancel()
@@ -77,7 +74,7 @@ func (r *Reader) Start(ctx context.Context) (closer func(), err error) {
 
 }
 
-func subscribe(ctx context.Context) (sub *pubsub.Subscription, closerFunc func(), err error) {
+func subscribePubsub(ctx context.Context) (sub *pubsub.Subscription, closerFunc func(), err error) {
 
 	var client *pubsub.Client
 
@@ -112,6 +109,7 @@ func subscribe(ctx context.Context) (sub *pubsub.Subscription, closerFunc func()
 	}
 
 	sub.ReceiveSettings.Synchronous = true
+	sub.ReceiveSettings.MaxOutstandingMessages = 1
 
 	return
 }
@@ -128,19 +126,22 @@ func (r *Reader) receiveFromPubsub(ctx context.Context) error {
 		r.logger.Debug("progress read", zap.String("requestID", progressMsg.RequestID), zap.Int("progress", progressMsg.Progress))
 
 		_, ok := r.progressPerReq[progressMsg.RequestID]
+
 		if !ok {
-			r.progressPerReq[progressMsg.RequestID] = make(chan int, maxProgress)
+
+			// the progress messages might start coming before subscription
+			r.progressPerReq[progressMsg.RequestID] = make(chan int, channelLen)
 		}
 		r.progressPerReq[progressMsg.RequestID] <- progressMsg.Progress
-
-		if progressMsg.Progress >= maxProgress {
-			r.logger.Debug("progress reached max, closing the channel", zap.String("requestID", progressMsg.RequestID))
-			close(r.progressPerReq[progressMsg.RequestID])
-		}
 	}
 
 	// blocking call
 	// receives messages on multiple goroutines
 	r.logger.Debug("listening on progress queue...")
 	return r.sub.Receive(ctx, pubsubCallback)
+}
+
+func (r *Reader) Unsubscribe(requestID string) {
+	r.logger.Debug("closing the channel", zap.String("requestID", requestID))
+	close(r.progressPerReq[requestID])
 }

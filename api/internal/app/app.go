@@ -12,6 +12,10 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	maxProgress = 100
+)
+
 type App struct {
 	Logger         *zap.Logger
 	progressReader *progressupdates.Reader
@@ -96,12 +100,16 @@ func (a App) GetResults(ctx context.Context, requestID string) (Results, error) 
 
 // ListenProgress listens on the queue for the request progress
 func (a App) ListenProgress(ctx context.Context, requestID string, callback func(progress int)) {
-	channel, finish := a.progressReader.SubscribeToProgressUpdates(requestID)
-	defer finish()
+	channel := a.progressReader.Subscribe(requestID)
 
 	for p := range channel {
 		a.Logger.Debug("received a progress update", zap.String("requestID", requestID))
 		callback(p)
+
+		if p >= maxProgress {
+			a.Logger.Debug("progress reached max, unsubscribing", zap.String("requestID", requestID))
+			a.progressReader.Unsubscribe(requestID)
+		}
 	}
 
 }
