@@ -34,8 +34,8 @@ type App struct {
 }
 
 type CalcInput struct {
-	MonthYear time.Time
-	Amount    float64
+	MonthYear      time.Time
+	FiatInvestment float64
 }
 
 type Results struct {
@@ -88,7 +88,7 @@ func (a App) Calculate(ctx context.Context, requestID string, input CalcInput) (
 
 	investment := domain.Investment{
 		FiatName: supportedFiatName,
-		Amount:   input.Amount,
+		Amount:   input.FiatInvestment,
 	}
 	lostChance, err := domain.CalculateLostChance(investment, historicalPrices, currentPrices)
 	if err != nil {

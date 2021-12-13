@@ -7,6 +7,8 @@ import (
 	"lost-chances-calc/internal/app"
 	"net/http"
 	"time"
+
+	"go.uber.org/multierr"
 )
 
 const (
@@ -17,6 +19,19 @@ type calcRequestBody struct {
 	RequestID string    `json:"requestID"`
 	MonthYear time.Time `json:"monthYear"`
 	Amount    int       `json:"amount"`
+}
+
+func (c calcRequestBody) validate() (err error) {
+	if c.RequestID == "" {
+		err = multierr.Append(err, errors.New("missing request ID"))
+	}
+	if c.Amount == 0 {
+		err = multierr.Append(err, errors.New("missing amount"))
+	}
+	if c.MonthYear.IsZero() {
+		err = multierr.Append(err, errors.New("missing date"))
+	}
+	return err
 }
 
 func calculate(a *app.App, w http.ResponseWriter, r *http.Request) (int, error) {
@@ -38,9 +53,13 @@ func calculate(a *app.App, w http.ResponseWriter, r *http.Request) (int, error) 
 		return http.StatusBadRequest, errors.New("invalid body: " + err.Error())
 	}
 
+	if err := body.validate(); err != nil {
+		return http.StatusBadRequest, errors.New("validation failed: " + err.Error())
+	}
+
 	input := app.CalcInput{
-		MonthYear: body.MonthYear,
-		Amount:    float64(body.Amount),
+		MonthYear:      body.MonthYear,
+		FiatInvestment: float64(body.Amount),
 	}
 
 	lostChance, err := a.Calculate(ctx, body.RequestID, input)
