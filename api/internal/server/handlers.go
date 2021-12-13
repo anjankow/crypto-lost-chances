@@ -34,21 +34,18 @@ type ResultsTemplate struct {
 }
 
 func results(a *app.App, w http.ResponseWriter, r *http.Request) (status int, err error) {
+
+	requestID, err := getRequestIdFromQuery(r)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
 	status = http.StatusBadRequest
 
 	conn, err := upgradeConnection(w, r)
 	if err != nil {
 		return
 	}
-
-	// get request ID
-	parsed, err := url.ParseQuery(r.URL.RawQuery)
-	if err != nil {
-		return
-	}
-
-	requestID := parsed["id"][0]
-	a.Logger.Debug("getting results for request", zap.String("requestID", requestID))
 
 	status = http.StatusInternalServerError
 
@@ -71,6 +68,22 @@ func results(a *app.App, w http.ResponseWriter, r *http.Request) (status int, er
 	}
 
 	return http.StatusOK, nil
+}
+
+func getRequestIdFromQuery(r *http.Request) (requestID string, err error) {
+
+	parsed, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		return
+	}
+
+	requestIDlist, ok := parsed["id"]
+	if !ok || len(requestIDlist) == 0 || requestIDlist[0] == "" {
+		return requestID, errors.New("missing request ID")
+	}
+
+	requestID = requestIDlist[0]
+	return
 }
 
 func upgradeConnection(w http.ResponseWriter, r *http.Request) (conn *websocket.Conn, err error) {
@@ -105,14 +118,14 @@ func (w worker) sendProgressUpdate(ctx context.Context, requestID string) error 
 
 func progress(a *app.App, w http.ResponseWriter, r *http.Request) (status int, err error) {
 
-	upgrader.CheckOrigin = func(r *http.Request) bool {
-		return true
+	requestID, err := getRequestIdFromQuery(r)
+	if err != nil {
+		return http.StatusBadRequest, err
 	}
 
-	ws, err := upgrader.Upgrade(w, r, nil)
+	ws, err := upgradeConnection(w, r)
 	if err != nil {
-		a.Logger.Warn("upgrade failed", zap.Error(err))
-		return http.StatusBadRequest, err
+		return http.StatusBadRequest, errors.New(err.Error() + ", requestID:" + requestID)
 	}
 
 	workerInstance := worker{
@@ -120,18 +133,10 @@ func progress(a *app.App, w http.ResponseWriter, r *http.Request) (status int, e
 		app:  a,
 	}
 
-	status = http.StatusInternalServerError
-
-	// get request ID
-	parsed, err := url.ParseQuery(r.URL.RawQuery)
-	if err != nil {
-		return
-	}
-	requestID := parsed["id"][0]
 	a.Logger.Debug("displaying progress updates", zap.String("requestID", requestID))
 
 	if err = workerInstance.sendProgressUpdate(r.Context(), requestID); err != nil {
-		return
+		return http.StatusInternalServerError, err
 	}
 
 	return http.StatusOK, nil
