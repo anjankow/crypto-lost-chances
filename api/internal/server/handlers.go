@@ -58,7 +58,7 @@ func results(a *app.App, w http.ResponseWriter, r *http.Request) (status int, er
 		return
 	}
 
-	a.Logger.Debug("results obtained", zap.String("requestID", requestID))
+	a.Logger.Debug("results obtained", zap.String("requestID", requestID), zap.Any("results", results))
 	bytes, err := json.Marshal(results)
 	if err != nil {
 		err = errors.New("can't marshal the results: " + err.Error())

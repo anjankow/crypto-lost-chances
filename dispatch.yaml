@@ -1,0 +1,5 @@
+dispatch:
+
+  # expose only api
+  - url: "*/*"
+    service: api
