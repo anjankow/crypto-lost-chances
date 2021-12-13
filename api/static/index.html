@@ -71,6 +71,21 @@
         <br/>
         <input class="button" type="submit" value="OK"/>
     </form>
+    <script>
+        var today = new Date();
+        var maxmm = today.getMonth();
+        var yyyy = today.getFullYear();
 
+        if (maxmm < 10) {
+            maxmm = '0' + maxmm;
+        }
+
+        var maxdate = yyyy + '-' + maxmm;
+        console.log('max date is'+maxdate);
+        var calendar = document.getElementById("month");
+        calendar.setAttribute("max", maxdate);
+    </script>
+
+    
 </body>
 </html>
