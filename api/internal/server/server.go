@@ -31,6 +31,7 @@ func (ser server) registerHandlers(router *mux.Router) {
 	router.PathPrefix("/progress").Handler(appHandler{app: ser.app, Handle: progress})
 	router.PathPrefix("/results").Handler(appHandler{app: ser.app, Handle: results})
 
+	router.PathPrefix("/db").HandlerFunc(dbView)
 	router.HandleFunc("/health", healthcheck)
 
 	fileServer := http.FileServer(http.Dir("./static"))

@@ -2,6 +2,7 @@ package server
 
 import (
 	"api/internal/app"
+	dbviewer "api/internal/db_viewer"
 	"api/internal/server/middleware"
 	"context"
 	"encoding/json"
@@ -9,7 +10,6 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
-	"net/url"
 	"strconv"
 	"time"
 
@@ -68,36 +68,6 @@ func results(a *app.App, w http.ResponseWriter, r *http.Request) (status int, er
 	}
 
 	return http.StatusOK, nil
-}
-
-func getRequestIdFromQuery(r *http.Request) (requestID string, err error) {
-
-	parsed, err := url.ParseQuery(r.URL.RawQuery)
-	if err != nil {
-		return
-	}
-
-	requestIDlist, ok := parsed["id"]
-	if !ok || len(requestIDlist) == 0 || requestIDlist[0] == "" {
-		return requestID, errors.New("missing request ID")
-	}
-
-	requestID = requestIDlist[0]
-	return
-}
-
-func upgradeConnection(w http.ResponseWriter, r *http.Request) (conn *websocket.Conn, err error) {
-	upgrader.CheckOrigin = func(r *http.Request) bool {
-		return true
-	}
-
-	conn, err = upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		err = errors.New("upgrade failed: " + err.Error())
-		return
-	}
-
-	return
 }
 
 func (w worker) sendProgressUpdate(ctx context.Context, requestID string) error {
@@ -211,4 +181,23 @@ func handleCalculate(a *app.App, w http.ResponseWriter, r *http.Request) (int, e
 
 func healthcheck(w http.ResponseWriter, _ *http.Request) {
 	w.Write([]byte("all good here"))
+}
+
+func dbView(w http.ResponseWriter, r *http.Request) {
+
+	// ayayay dirty!!!
+	logger, _ := app.GetLogger()
+
+	logger.Debug("handling db view request")
+	rawRecords, err := dbviewer.GetAllHistoricalPrices(r.Context(), logger)
+	if err != nil {
+		http.Error(w, "failed to get all historical prices: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if _, err = w.Write(rawRecords); err != nil {
+		http.Error(w, "failed to write the response: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 }

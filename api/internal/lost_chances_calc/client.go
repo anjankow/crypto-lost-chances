@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"google.golang.org/api/idtoken"
 )
 
 var (
@@ -45,7 +46,14 @@ func (c Client) Calculate(ctx context.Context, requestID string, monthYear time.
 		return
 	}
 
-	resp, err := http.Post(url, contentType, bytes.NewBuffer(marshalledBody))
+	client, err := idtoken.NewClient(ctx, url)
+	if err != nil {
+		err = errors.New("can't create a idtoken client: " + err.Error())
+		return
+	}
+
+	c.logger.Debug("posting calculation request to "+url, zap.String("requestID", requestID))
+	resp, err := client.Post(url, contentType, bytes.NewBuffer(marshalledBody))
 	if err != nil {
 		return
 	}

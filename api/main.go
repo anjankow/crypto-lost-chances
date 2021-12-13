@@ -2,26 +2,25 @@ package main
 
 import (
 	"api/internal/app"
+	"api/internal/config"
 	progressupdates "api/internal/progress_updates"
 	"api/internal/server"
 	"context"
 	"log"
-	"time"
 
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
 
 func main() {
 
-	logger, err := getLogger()
+	logger, err := app.GetLogger()
 	if err != nil {
 		log.Fatalln("Setting up the logger failed: ", err)
 		return
 	}
 	defer logger.Sync()
 
-	logger.Info("Service started")
+	logger.Info("Service started", zap.String("env", string(config.GetRunEnvironment())))
 
 	reader := progressupdates.NewReader(logger)
 	readerCloser, err := reader.Start(context.Background())
@@ -51,19 +50,4 @@ func main() {
 	} else {
 		logger.Info("Service finished")
 	}
-}
-
-func getLogger() (*zap.Logger, error) {
-	options := []zap.Option{
-		zap.AddCaller(),
-		zap.AddStacktrace(zap.FatalLevel),
-	}
-
-	config := zap.NewDevelopmentConfig()
-	config.EncoderConfig.EncodeTime = zapcore.TimeEncoderOfLayout(time.RFC3339)
-	config.Development = true
-	config.Level.SetLevel(zap.DebugLevel)
-
-	logger, err := config.Build()
-	return logger.WithOptions(options...), err
 }
