@@ -99,7 +99,7 @@ func (p *PriceFetcher) CollectHistoricalPrices(ctx context.Context, requestID st
 			break
 		}
 		if ctx.Err() != nil {
-			p.logger.Warn("timeout when collecting the historical prices", zap.String("requestID", requestID))
+			p.logger.Warn("timeout when collecting the historical prices", zap.String("requestID", requestID), zap.Int("prices_len", len(prices)))
 			break
 		}
 		time.Sleep(waitTime)

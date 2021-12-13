@@ -22,7 +22,6 @@ var (
 	progressSteps = len(domain.Cryptocurrencies) + //for submitting fetcher tasks
 		1 + // for getting the historical prices
 		1 + // for getting the current price
-		1 + // for the initial progress added just because the operation reached this point
 		1 // for calculating the final result
 
 	progressStepLen = int(progressMax / progressSteps)

@@ -33,7 +33,7 @@ func CalculateLostChance(fiatInvestment Investment, historicalPrices []Historica
 	}
 
 	if len(outAmounts) == 0 {
-		err = fmt.Errorf("can't calculate any lost chances, len(historicalPrices): %v, len(currentPrices): %v", len(historicalPrices), len(currentPrices))
+		err = fmt.Errorf("can't calculate any lost chances, len(historicalPrices): %v, len(currentPrices[EUR]): %v", len(historicalPrices), len(currentPrices[Euro]))
 		return
 	}
 
