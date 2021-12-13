@@ -1,5 +1,7 @@
 runtime: go116
 
+service: lost-chances-calc
+
 env_variables:
   ENV: production
   PROJECT_ID: crypto-lost-chances
