@@ -109,6 +109,7 @@ func (a App) ListenProgress(ctx context.Context, requestID string, callback func
 		if p >= maxProgress {
 			a.Logger.Debug("progress reached max, unsubscribing", zap.String("requestID", requestID))
 			a.progressReader.Unsubscribe(requestID)
+			break
 		}
 	}
 

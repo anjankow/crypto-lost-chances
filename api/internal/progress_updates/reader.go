@@ -144,4 +144,5 @@ func (r *Reader) receiveFromPubsub(ctx context.Context) error {
 func (r *Reader) Unsubscribe(requestID string) {
 	r.logger.Debug("closing the channel", zap.String("requestID", requestID))
 	close(r.progressPerReq[requestID])
+	delete(r.progressPerReq, requestID)
 }
