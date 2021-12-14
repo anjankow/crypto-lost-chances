@@ -6,7 +6,7 @@ Choose a month and check which currency could you buy then and how rich would yo
 
 ## Components
 
-![alt text](https://github.com/[username]/[reponame]/blob/[branch]/image.jpg?raw=true)
+![alt text](https://gitlab.com/anjankow/crypto-lost-chances/-/blob/main/components.png)
 
 ## Deployment
 
