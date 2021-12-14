@@ -15,6 +15,7 @@ const (
 	defaultProjectID = "crypto-lost-chances"
 
 	lostChancesCalcLocalhost = "http://localhost:8082"
+	lostChancesCalcProd      = "https://lost-chances-calc-dot-crypto-lost-chances.appspot.com"
 )
 
 var (
@@ -70,14 +71,24 @@ func GetProjectID() string {
 }
 
 func GetLostChancesCalcHost() string {
-	if lostChancesCalcHost != "" {
-		return lostChancesCalcHost
+	host := lostChancesCalcHost
+
+	defer func() { lostChancesCalcHost = host }()
+
+	if host != "" {
+		return host
 	}
 
-	lostChancesCalcHost = os.Getenv("LOST_CHANCES_CALC_HOST")
-	if lostChancesCalcHost == "" {
-		lostChancesCalcHost = lostChancesCalcLocalhost
+	host = os.Getenv("LOST_CHANCES_CALC_HOST")
+	if host != "" {
+		return host
 	}
 
-	return lostChancesCalcHost
+	if GetRunEnvironment() == Production {
+		host = lostChancesCalcProd
+	} else {
+		host = lostChancesCalcLocalhost
+	}
+
+	return host
 }
